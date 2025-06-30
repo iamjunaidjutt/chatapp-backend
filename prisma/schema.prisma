@@ -1,0 +1,64 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+/// A user in our chat app
+model User {
+  /// Mongo's ObjectId
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  username  String   @unique
+  email     String   @unique
+  password  String
+  avatarUrl String? // optional profile picture
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Relations
+  messages Message[] // all messages this user sent
+  rooms    UserRoom[] // all rooms this user participates in
+}
+
+/// A chatroom or direct-message thread
+model Room {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String? // e.g. "general" or null for DMs
+  isPrivate Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  participants UserRoom[] // users in this room
+  messages     Message[]
+}
+
+/// Junction table for many-to-many relationship between User and Room
+model UserRoom {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @db.ObjectId
+  room   Room   @relation(fields: [roomId], references: [id])
+  roomId String @db.ObjectId
+
+  @@unique([userId, roomId])
+}
+
+/// Individual chat messages
+model Message {
+  id      String   @id @default(auto()) @map("_id") @db.ObjectId
+  content String
+  sentAt  DateTime @default(now())
+  user    User     @relation(fields: [userId], references: [id])
+  userId  String   @db.ObjectId
+  room    Room     @relation(fields: [roomId], references: [id])
+  roomId  String   @db.ObjectId
+}
