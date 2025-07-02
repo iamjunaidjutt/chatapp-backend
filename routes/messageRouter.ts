@@ -1,4 +1,6 @@
-import express from "express";
+import express, { Request, Response } from "express";
+import mongoose from "mongoose";
+import { Message, IMessage } from "../models";
 
 const router = express.Router();
 
@@ -52,7 +54,7 @@ const router = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post("/", (req, res) => {
+router.post("/", (req: Request, res: Response): void => {
 	const messageData = req.body;
 	res.status(201).json({ message: "Message sent", data: messageData });
 });
@@ -84,7 +86,7 @@ router.post("/", (req, res) => {
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/:id", (req, res) => {
+router.get("/:id", (req: Request, res: Response): void => {
 	const { id } = req.params;
 	res.json({ message: `Get message with ID: ${id}` });
 });
@@ -134,7 +136,7 @@ router.get("/:id", (req, res) => {
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.put("/:id", (req, res) => {
+router.put("/:id", (req: Request, res: Response): void => {
 	const { id } = req.params;
 	const { content } = req.body;
 	res.json({ message: `Update message with ID: ${id}`, content });
@@ -177,7 +179,7 @@ router.put("/:id", (req, res) => {
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete("/:id", (req, res) => {
+router.delete("/:id", (req: Request, res: Response): void => {
 	const { id } = req.params;
 	res.json({ message: `Delete message with ID: ${id}` });
 });

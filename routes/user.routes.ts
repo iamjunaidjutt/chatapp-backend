@@ -1,4 +1,12 @@
 import express from "express";
+import {
+	getAllUsers,
+	getUserById,
+	register,
+	login,
+	updateUser,
+	deleteUser,
+} from "../controllers/user.controllers";
 
 const router = express.Router();
 
@@ -6,7 +14,7 @@ const router = express.Router();
  * @swagger
  * tags:
  *   name: Users
- *   description: User management and authentication
+ *   description: User management
  */
 
 /**
@@ -34,9 +42,7 @@ const router = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/", (req, res) => {
-	res.json({ message: "Welcome to the API!" });
-});
+router.get("/", getAllUsers);
 
 /**
  * @swagger
@@ -65,10 +71,7 @@ router.get("/", (req, res) => {
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/:id", (req, res) => {
-	const { id } = req.params;
-	res.json({ message: `Get user with ID: ${id}` });
-});
+router.get("/:id", getUserById);
 
 /**
  * @swagger
@@ -124,10 +127,9 @@ router.get("/:id", (req, res) => {
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post("/", (req, res) => {
-	const userData = req.body;
-	res.status(201).json({ message: "User created", user: userData });
-});
+router.post("/register", register);
+
+router.post("/login", login);
 
 /**
  * @swagger
@@ -174,11 +176,7 @@ router.post("/", (req, res) => {
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.put("/:id", (req, res) => {
-	const { id } = req.params;
-	const userData = req.body;
-	res.json({ message: `Update user with ID: ${id}`, user: userData });
-});
+router.put("/:id", updateUser);
 
 /**
  * @swagger
@@ -211,9 +209,6 @@ router.put("/:id", (req, res) => {
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete("/:id", (req, res) => {
-	const { id } = req.params;
-	res.json({ message: `Delete user with ID: ${id}` });
-});
+router.delete("/:id", deleteUser);
 
 export { router };

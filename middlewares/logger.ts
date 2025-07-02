@@ -6,7 +6,9 @@ const logger = (req: Request, res: Response, next: NextFunction) => {
 		req.method,
 		req.url,
 		"Time:",
-		new Date().toLocaleString()
+		new Date().toLocaleString(),
+		"Status:",
+		res.statusCode
 	);
 	next();
 };

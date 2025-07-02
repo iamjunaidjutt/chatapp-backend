@@ -1,4 +1,6 @@
-import express from "express";
+import express, { Request, Response } from "express";
+import mongoose from "mongoose";
+import { Room, IRoom } from "../models";
 
 const router = express.Router();
 
@@ -28,8 +30,42 @@ const router = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/", (req, res) => {
-	res.json({ message: "Get all rooms", rooms: [] });
+router.get("/", async (req: Request, res: Response): Promise<void> => {
+	try {
+		if (mongoose.connection.readyState !== 1) {
+			// Fallback: return mock data if database is not connected
+			const mockRooms = [
+				{
+					_id: "507f1f77bcf86cd799439012",
+					name: "General",
+					isPrivate: false,
+					participants: ["507f1f77bcf86cd799439011"],
+					createdAt: new Date(),
+				},
+				{
+					_id: "507f1f77bcf86cd799439013",
+					name: "Random",
+					isPrivate: false,
+					participants: ["507f1f77bcf86cd799439011"],
+					createdAt: new Date(),
+				},
+			];
+			res.json({
+				message: "Get all rooms (mock data)",
+				rooms: mockRooms,
+			});
+			return;
+		}
+
+		const rooms = await Room.find({}).populate(
+			"participants",
+			"username email"
+		);
+		res.json({ message: "Get all rooms", rooms });
+	} catch (error) {
+		console.error("Error getting rooms:", error);
+		res.status(500).json({ error: "Failed to retrieve rooms" });
+	}
 });
 
 /**

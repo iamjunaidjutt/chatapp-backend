@@ -22,10 +22,6 @@ build/
 *.d.ts
 *.d.ts.map
 
-# Prisma
-/generated/prisma
-prisma/client
-
 # Logs
 logs/
 *.log

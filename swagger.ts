@@ -9,7 +9,7 @@ const options = {
 			title: "Chat App API",
 			version: "1.0.0",
 			description:
-				"A real-time chat application API built with Express, Socket.IO, and Prisma",
+				"A real-time chat application API built with Express, Socket.IO, and MongoDB",
 			contact: {
 				name: "API Support",
 				email: "support@chatapp.com",
