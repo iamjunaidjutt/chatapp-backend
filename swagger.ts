@@ -22,6 +22,14 @@ const options = {
 			},
 		],
 		components: {
+			securitySchemes: {
+				sessionAuth: {
+					type: "apiKey",
+					in: "cookie",
+					name: "connect.sid",
+					description: "Session-based authentication using cookies",
+				},
+			},
 			schemas: {
 				User: {
 					type: "object",
