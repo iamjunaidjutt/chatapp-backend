@@ -2,11 +2,10 @@ import express from "express";
 import {
 	getAllUsers,
 	getUserById,
-	register,
-	login,
 	updateUser,
 	deleteUser,
 } from "../controllers/user.controllers";
+import { requireAuth } from "../middlewares/auth";
 
 const router = express.Router();
 
@@ -23,7 +22,9 @@ const router = express.Router();
  *   get:
  *     summary: Get all users
  *     tags: [Users]
- *     description: Retrieve a list of all users in the system
+ *     description: Retrieve a list of all users in the system (requires authentication)
+ *     security:
+ *       - sessionAuth: []
  *     responses:
  *       200:
  *         description: List of users retrieved successfully
@@ -34,15 +35,25 @@ const router = express.Router();
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Welcome to the API!"
+ *                   example: "Users retrieved successfully"
  *                 users:
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Not authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Not authenticated"
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/", getAllUsers);
+router.get("/", requireAuth, getAllUsers);
 
 /**
  * @swagger
@@ -50,7 +61,9 @@ router.get("/", getAllUsers);
  *   get:
  *     summary: Get user by ID
  *     tags: [Users]
- *     description: Retrieve a specific user by their ID
+ *     description: Retrieve a specific user by their ID (requires authentication)
+ *     security:
+ *       - sessionAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -66,12 +79,22 @@ router.get("/", getAllUsers);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Not authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Not authenticated"
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/:id", getUserById);
+router.get("/:id", requireAuth, getUserById);
 
 /**
  * @swagger
@@ -80,6 +103,8 @@ router.get("/:id", getUserById);
  *     summary: Create a new user
  *     tags: [Users]
  *     description: Register a new user in the system
+ *     security:
+ *       - sessionAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -127,9 +152,6 @@ router.get("/:id", getUserById);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-// router.post("/register", register);
-
-router.post("/login", login);
 
 /**
  * @swagger
@@ -137,7 +159,9 @@ router.post("/login", login);
  *   put:
  *     summary: Update user by ID
  *     tags: [Users]
- *     description: Update an existing user's information
+ *     description: Update an existing user's information (requires authentication)
+ *     security:
+ *       - sessionAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -171,12 +195,22 @@ router.post("/login", login);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Not authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Not authenticated"
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.put("/:id", updateUser);
+router.put("/:id", requireAuth, updateUser);
 
 /**
  * @swagger
@@ -184,7 +218,9 @@ router.put("/:id", updateUser);
  *   delete:
  *     summary: Delete user by ID
  *     tags: [Users]
- *     description: Delete a user from the system
+ *     description: Delete a user from the system (requires authentication)
+ *     security:
+ *       - sessionAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -204,11 +240,21 @@ router.put("/:id", updateUser);
  *                 message:
  *                   type: string
  *                   example: "User deleted successfully"
+ *       401:
+ *         description: Not authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Not authenticated"
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete("/:id", deleteUser);
+router.delete("/:id", requireAuth, deleteUser);
 
 export { router };
