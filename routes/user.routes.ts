@@ -127,7 +127,7 @@ router.get("/:id", getUserById);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post("/register", register);
+// router.post("/register", register);
 
 router.post("/login", login);
 
