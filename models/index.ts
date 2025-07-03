@@ -1,5 +1,5 @@
 // Export all models and their schemas
-export * from "./User";
-export * from "./Room";
-export * from "./Message";
-export * from "./UserRoom";
+export * from "./user.models";
+export * from "./room.models";
+export * from "./message.models";
+export * from "./user-room.models";

@@ -8,11 +8,11 @@ import session from "express-session";
 import MongoStore from "connect-mongo";
 
 import { router } from "./routes";
-import { logger } from "./middlewares/logger";
-import { errorHandler } from "./middlewares/errorHandler";
+import { logger } from "./middlewares/logger.middlewares";
+import { errorHandler } from "./middlewares/error-handler.middlewares";
 import { config } from "./config";
 import { setupSwagger } from "./swagger";
-import { ExpressSessionManager } from "./utils/expressSessionManager";
+import { ExpressSessionManager } from "./utils/express-session-manager.utils";
 
 async function startServer() {
 	try {

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 
-import { SessionManager } from "../utils/sessionManager";
-import { User } from "../models/User";
+import { SessionManager } from "../utils/session-manager.utils";
+import { User } from "../models/user.models";
 
 // Extend Express Request type to include user and sessionData
 declare global {

@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { Session, ISession } from "../models/Session";
+import { Session, ISession } from "../models/session.models";
 import { Request } from "express";
 
 export class SessionManager {

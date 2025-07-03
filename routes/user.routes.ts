@@ -5,7 +5,7 @@ import {
 	updateUser,
 	deleteUser,
 } from "../controllers/user.controllers";
-import { requireAuth } from "../middlewares/auth";
+import { requireAuth } from "../middlewares/auth.middlewares";
 
 const router = express.Router();
 

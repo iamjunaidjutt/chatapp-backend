@@ -1,7 +1,8 @@
 import { Router } from "express";
+
 import { router as userRouter } from "./user.routes";
-import { router as roomRouter } from "./roomRouter";
-import { router as messageRouter } from "./messageRouter";
+import { router as roomRouter } from "./room.routes";
+import { router as messageRouter } from "./message.routes";
 import { authRouter } from "./auth.routes";
 
 const router = Router();
