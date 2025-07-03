@@ -12,6 +12,7 @@ import { logger } from "./middlewares/logger";
 import { errorHandler } from "./middlewares/errorHandler";
 import { config } from "./config";
 import { setupSwagger } from "./swagger";
+import { ExpressSessionManager } from "./utils/expressSessionManager";
 
 async function startServer() {
 	try {
@@ -78,6 +79,30 @@ async function startServer() {
 		server.listen(config.port, () => {
 			console.log(`🚀 Server is running on port ${config.port}`);
 		});
+
+		// 5) Setup periodic session cleanup (every 24 hours)
+		setInterval(async () => {
+			try {
+				const cleanedCount =
+					await ExpressSessionManager.cleanupExpiredSessions();
+				console.log(`🧹 Cleaned up ${cleanedCount} expired sessions`);
+			} catch (error) {
+				console.error("Error during periodic session cleanup:", error);
+			}
+		}, 24 * 60 * 60 * 1000); // 24 hours in milliseconds
+
+		// Run initial cleanup on server start
+		setTimeout(async () => {
+			try {
+				const cleanedCount =
+					await ExpressSessionManager.cleanupExpiredSessions();
+				console.log(
+					`🧹 Initial cleanup: removed ${cleanedCount} expired sessions`
+				);
+			} catch (error) {
+				console.error("Error during initial session cleanup:", error);
+			}
+		}, 5000); // Wait 5 seconds after server start
 
 		// 5) (Optional) Log future disconnects/errors
 		mongoose.connection.on("error", (err) =>

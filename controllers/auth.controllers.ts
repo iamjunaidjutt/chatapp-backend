@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 import { User } from "../models";
+import { ExpressSessionManager } from "../utils/expressSessionManager";
 /**
  * @swagger
  * tags:
@@ -107,6 +108,14 @@ const loginWithSession = async (req: Request, res: Response): Promise<void> => {
 		(req.session as any).email = user.email;
 		(req.session as any).isAuthenticated = true;
 
+		// Limit concurrent sessions after creating the session
+		if (user._id) {
+			await ExpressSessionManager.limitConcurrentSessions(
+				user._id.toString(),
+				3
+			);
+		}
+
 		res.json({
 			message: "Login successful",
 			user: {
@@ -132,6 +141,86 @@ const logoutWithSession = (req: Request, res: Response): void => {
 		res.clearCookie("connect.sid"); // Clear the session cookie
 		res.json({ message: "Logout successful" });
 	});
+};
+
+const logoutAllDevices = async (req: Request, res: Response): Promise<void> => {
+	try {
+		if (
+			!(req.session as any).isAuthenticated ||
+			!(req.session as any).userId
+		) {
+			res.status(401).json({ message: "Not authenticated" });
+			return;
+		}
+
+		const userId = (req.session as any).userId;
+		const currentSessionId = ExpressSessionManager.getCurrentSessionId(req);
+
+		// Destroy all sessions for this user
+		const destroyedCount =
+			await ExpressSessionManager.destroyAllUserSessions(userId);
+
+		// Also destroy current session
+		req.session.destroy((err) => {
+			if (err) {
+				console.error("Session destroy error:", err);
+			}
+		});
+
+		res.clearCookie("connect.sid");
+		res.json({
+			message: "Logged out from all devices",
+			sessionsDestroyed: destroyedCount + 1, // +1 for current session
+		});
+	} catch (error) {
+		console.error("Logout all devices error:", error);
+		res.status(500).json({ message: "Internal server error" });
+	}
+};
+
+const getActiveSessions = async (
+	req: Request,
+	res: Response
+): Promise<void> => {
+	try {
+		if (
+			!(req.session as any).isAuthenticated ||
+			!(req.session as any).userId
+		) {
+			res.status(401).json({ message: "Not authenticated" });
+			return;
+		}
+
+		const userId = (req.session as any).userId;
+		const sessions = await ExpressSessionManager.getUserActiveSessions(
+			userId
+		);
+
+		// Parse and clean up session data for response
+		const sessionData = sessions.map((session) => {
+			let sessionInfo;
+			try {
+				sessionInfo = JSON.parse(session.session);
+			} catch (e) {
+				sessionInfo = {};
+			}
+
+			return {
+				id: session._id,
+				expires: session.expires,
+				lastActivity: sessionInfo.cookie?.expires || session.expires,
+				isCurrent: session._id === req.sessionID,
+			};
+		});
+
+		res.json({
+			sessions: sessionData,
+			total: sessionData.length,
+		});
+	} catch (error) {
+		console.error("Get active sessions error:", error);
+		res.status(500).json({ message: "Internal server error" });
+	}
 };
 
 const getCurrentUser = async (req: Request, res: Response): Promise<void> => {
@@ -168,10 +257,73 @@ const getCurrentUser = async (req: Request, res: Response): Promise<void> => {
 	}
 };
 
+// Admin endpoint: Get session statistics
+const getSessionStats = async (req: Request, res: Response): Promise<void> => {
+	try {
+		if (
+			!(req.session as any).isAuthenticated ||
+			!(req.session as any).userId
+		) {
+			res.status(401).json({ message: "Not authenticated" });
+			return;
+		}
+
+		// Check if user is admin (you can modify this based on your role system)
+		const user = await User.findById((req.session as any).userId);
+		if (!user || user.role !== "admin") {
+			res.status(403).json({ message: "Admin access required" });
+			return;
+		}
+
+		const stats = await ExpressSessionManager.getSessionStats();
+		res.json(stats);
+	} catch (error) {
+		console.error("Get session stats error:", error);
+		res.status(500).json({ message: "Internal server error" });
+	}
+};
+
+// Admin endpoint: Cleanup expired sessions
+const cleanupExpiredSessions = async (
+	req: Request,
+	res: Response
+): Promise<void> => {
+	try {
+		if (
+			!(req.session as any).isAuthenticated ||
+			!(req.session as any).userId
+		) {
+			res.status(401).json({ message: "Not authenticated" });
+			return;
+		}
+
+		// Check if user is admin
+		const user = await User.findById((req.session as any).userId);
+		if (!user || user.role !== "admin") {
+			res.status(403).json({ message: "Admin access required" });
+			return;
+		}
+
+		const cleanedCount =
+			await ExpressSessionManager.cleanupExpiredSessions();
+		res.json({
+			message: "Expired sessions cleaned up",
+			cleanedCount,
+		});
+	} catch (error) {
+		console.error("Cleanup expired sessions error:", error);
+		res.status(500).json({ message: "Internal server error" });
+	}
+};
+
 export {
 	register,
 	loginWithJwt,
 	loginWithSession,
 	logoutWithSession,
+	logoutAllDevices,
+	getActiveSessions,
 	getCurrentUser,
+	getSessionStats,
+	cleanupExpiredSessions,
 };

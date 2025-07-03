@@ -4,6 +4,10 @@ import {
 	getCurrentUser,
 	loginWithSession,
 	logoutWithSession,
+	logoutAllDevices,
+	getActiveSessions,
+	getSessionStats,
+	cleanupExpiredSessions,
 } from "../controllers/auth.controllers";
 import { register } from "../controllers/user.controllers";
 
@@ -90,19 +94,11 @@ router.post("/login", loginWithSession);
  *         description: Logout successful
  */
 router.post("/logout", logoutWithSession);
+router.post("/logout-all", logoutAllDevices);
+router.get("/sessions", getActiveSessions);
+router.get("/admin/session-stats", getSessionStats);
+router.post("/admin/cleanup-sessions", cleanupExpiredSessions);
 
-/**
- * @swagger
- * /auth/me:
- *   get:
- *     summary: Get current user
- *     tags: [Auth]
- *     responses:
- *       200:
- *         description: Current user info
- *       401:
- *         description: Not authenticated
- */
 router.get("/me", getCurrentUser);
 
 export { router as authRouter };
