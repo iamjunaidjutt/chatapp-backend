@@ -47,7 +47,7 @@ export const getRoomParticipants = async (
 	res: Response
 ): Promise<void> => {
 	try {
-		const { roomId } = req.params;
+		const { id: roomId } = req.params;
 		const currentUserId = (req.session as any).userId;
 
 		// Validate that roomId exists and is a valid ObjectId
@@ -103,7 +103,7 @@ export const getRoomParticipants = async (
  */
 export const joinRoom = async (req: Request, res: Response): Promise<void> => {
 	try {
-		const { roomId } = req.params;
+		const { id: roomId } = req.params;
 		const currentUserId = (req.session as any).userId;
 
 		// Validate that roomId exists and is a valid ObjectId
@@ -189,7 +189,7 @@ export const joinRoom = async (req: Request, res: Response): Promise<void> => {
  */
 export const leaveRoom = async (req: Request, res: Response): Promise<void> => {
 	try {
-		const { roomId } = req.params;
+		const { id: roomId } = req.params;
 		const currentUserId = (req.session as any).userId;
 
 		// Validate that roomId exists and is a valid ObjectId
