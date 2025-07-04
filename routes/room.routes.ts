@@ -1,6 +1,23 @@
-import express, { Request, Response } from "express";
-import mongoose from "mongoose";
-import { Room, IRoom } from "../models";
+import express from "express";
+import {
+	getAllRooms,
+	getRoomById,
+	createRoom,
+	updateRoom,
+	deleteRoom,
+} from "../controllers/room.controllers";
+import {
+	getRoomMessages,
+	sendMessage,
+} from "../controllers/message.controllers";
+import {
+	joinRoom,
+	leaveRoom,
+	getRoomParticipants,
+	updateUserRole,
+	updateLastSeen,
+} from "../controllers/userRoom.controllers";
+import { requireAuth } from "../middlewares/auth.middlewares";
 
 const router = express.Router();
 
@@ -17,56 +34,33 @@ const router = express.Router();
  *   get:
  *     summary: Get all rooms
  *     tags: [Rooms]
- *     description: Retrieve a list of all chat rooms
+ *     description: Retrieve a list of all chat rooms (requires authentication)
+ *     security:
+ *       - sessionAuth: []
  *     responses:
  *       200:
  *         description: List of rooms retrieved successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Room'
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Rooms retrieved successfully"
+ *                 rooms:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Room'
+ *                 total:
+ *                   type: number
+ *                   example: 5
+ *       401:
+ *         description: Not authenticated
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/", async (req: Request, res: Response): Promise<void> => {
-	try {
-		if (mongoose.connection.readyState !== 1) {
-			// Fallback: return mock data if database is not connected
-			const mockRooms = [
-				{
-					_id: "507f1f77bcf86cd799439012",
-					name: "General",
-					isPrivate: false,
-					participants: ["507f1f77bcf86cd799439011"],
-					createdAt: new Date(),
-				},
-				{
-					_id: "507f1f77bcf86cd799439013",
-					name: "Random",
-					isPrivate: false,
-					participants: ["507f1f77bcf86cd799439011"],
-					createdAt: new Date(),
-				},
-			];
-			res.json({
-				message: "Get all rooms (mock data)",
-				rooms: mockRooms,
-			});
-			return;
-		}
-
-		const rooms = await Room.find({}).populate(
-			"participants",
-			"username email"
-		);
-		res.json({ message: "Get all rooms", rooms });
-	} catch (error) {
-		console.error("Error getting rooms:", error);
-		res.status(500).json({ error: "Failed to retrieve rooms" });
-	}
-});
+router.get("/", requireAuth, getAllRooms);
 
 /**
  * @swagger
@@ -74,7 +68,9 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
  *   get:
  *     summary: Get room by ID
  *     tags: [Rooms]
- *     description: Retrieve a specific room by its ID
+ *     description: Retrieve a specific room by its ID (requires authentication)
+ *     security:
+ *       - sessionAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -89,16 +85,23 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Room'
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Room retrieved successfully"
+ *                 room:
+ *                   $ref: '#/components/schemas/Room'
+ *       400:
+ *         description: Invalid room ID
+ *       401:
+ *         description: Not authenticated
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/:id", (req, res) => {
-	const { id } = req.params;
-	res.json({ message: `Get room with ID: ${id}` });
-});
+router.get("/:id", requireAuth, getRoomById);
 
 /**
  * @swagger
@@ -106,40 +109,61 @@ router.get("/:id", (req, res) => {
  *   post:
  *     summary: Create a new room
  *     tags: [Rooms]
- *     description: Create a new chat room
+ *     description: Create a new chat room (requires authentication)
+ *     security:
+ *       - sessionAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - name
  *             properties:
  *               name:
  *                 type: string
+ *                 description: Room name
  *                 example: "general"
+ *                 maxLength: 50
+ *               description:
+ *                 type: string
+ *                 description: Room description
+ *                 example: "A room for general discussions"
+ *                 maxLength: 500
  *               isPrivate:
  *                 type: boolean
+ *                 description: Whether the room is private
  *                 example: false
+ *               maxParticipants:
+ *                 type: number
+ *                 description: Maximum number of participants (null means unlimited)
+ *                 example: 100
+ *                 minimum: 2
+ *                 maximum: 1000
  *     responses:
  *       201:
  *         description: Room created successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Room'
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Room created successfully"
+ *                 room:
+ *                   $ref: '#/components/schemas/Room'
  *       400:
  *         description: Bad request - validation error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Not authenticated
+ *       409:
+ *         description: Room with this name already exists
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post("/", (req, res) => {
-	const roomData = req.body;
-	res.status(201).json({ message: "Room created", room: roomData });
-});
+router.post("/", requireAuth, createRoom);
 
 /**
  * @swagger
@@ -147,7 +171,9 @@ router.post("/", (req, res) => {
  *   get:
  *     summary: Get messages in a room
  *     tags: [Rooms]
- *     description: Retrieve all messages in a specific room
+ *     description: Retrieve all messages in a specific room (requires authentication and room access)
+ *     security:
+ *       - sessionAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -158,38 +184,325 @@ router.post("/", (req, res) => {
  *           example: "507f1f77bcf86cd799439012"
  *       - in: query
  *         name: limit
- *         description: Number of messages to retrieve
+ *         description: Number of messages to retrieve (max 100)
  *         schema:
  *           type: integer
  *           example: 50
+ *           maximum: 100
  *       - in: query
  *         name: offset
  *         description: Number of messages to skip
  *         schema:
  *           type: integer
  *           example: 0
+ *       - in: query
+ *         name: before
+ *         description: Get messages before this date
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: after
+ *         description: Get messages after this date
+ *         schema:
+ *           type: string
+ *           format: date-time
  *     responses:
  *       200:
  *         description: Messages retrieved successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Message'
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Messages retrieved successfully"
+ *                 messages:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Message'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     limit:
+ *                       type: number
+ *                     offset:
+ *                       type: number
+ *                     total:
+ *                       type: number
+ *                     hasMore:
+ *                       type: boolean
+ *       400:
+ *         description: Invalid room ID
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: No access to this room
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/:id/messages", (req, res) => {
-	const { id } = req.params;
-	const { limit = 50, offset = 0 } = req.query;
-	res.json({
-		message: `Get messages for room ${id}`,
-		messages: [],
-		pagination: { limit, offset },
-	});
-});
+router.get("/:id/messages", requireAuth, getRoomMessages);
+
+/**
+ * @swagger
+ * /rooms/{id}/messages:
+ *   post:
+ *     summary: Send a message to a room
+ *     tags: [Rooms]
+ *     description: Send a new message to a specific room (requires authentication and room access)
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Room ID
+ *         schema:
+ *           type: string
+ *           example: "507f1f77bcf86cd799439012"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 description: Message content
+ *                 example: "Hello everyone!"
+ *                 maxLength: 1000
+ *               messageType:
+ *                 type: string
+ *                 description: Type of message
+ *                 enum: [text, image, file]
+ *                 default: text
+ *                 example: "text"
+ *     responses:
+ *       201:
+ *         description: Message sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Message sent successfully"
+ *                 data:
+ *                   $ref: '#/components/schemas/Message'
+ *       400:
+ *         description: Bad request - validation error
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: No access to this room
+ *       404:
+ *         description: Room not found
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.post("/:id/messages", requireAuth, sendMessage);
+
+/**
+ * @swagger
+ * /rooms/{id}:
+ *   put:
+ *     summary: Update room
+ *     tags: [Rooms]
+ *     description: Update room information (requires authentication and ownership)
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Room ID
+ *         schema:
+ *           type: string
+ *           example: "507f1f77bcf86cd799439012"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Room name
+ *                 example: "Updated Room Name"
+ *                 maxLength: 50
+ *               isPrivate:
+ *                 type: boolean
+ *                 description: Whether the room is private
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Room updated successfully
+ *       400:
+ *         description: Bad request - validation error
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: No permission to update this room
+ *       404:
+ *         description: Room not found
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.put("/:id", requireAuth, updateRoom);
+
+/**
+ * @swagger
+ * /rooms/{id}:
+ *   delete:
+ *     summary: Delete room
+ *     tags: [Rooms]
+ *     description: Delete a room (requires authentication and ownership)
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Room ID
+ *         schema:
+ *           type: string
+ *           example: "507f1f77bcf86cd799439012"
+ *     responses:
+ *       200:
+ *         description: Room deleted successfully
+ *       400:
+ *         description: Invalid room ID
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: No permission to delete this room
+ *       404:
+ *         description: Room not found
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.delete("/:id", requireAuth, deleteRoom);
+
+/**
+ * @swagger
+ * /rooms/{id}/join:
+ *   post:
+ *     summary: Join room
+ *     tags: [Rooms]
+ *     description: Join a room as a participant (requires authentication)
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Room ID
+ *         schema:
+ *           type: string
+ *           example: "507f1f77bcf86cd799439012"
+ *     responses:
+ *       200:
+ *         description: Successfully joined the room
+ *       400:
+ *         description: Invalid room ID
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Room not found
+ *       409:
+ *         description: Already a participant in this room
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.post("/:id/join", requireAuth, joinRoom);
+
+/**
+ * @swagger
+ * /rooms/{id}/leave:
+ *   post:
+ *     summary: Leave room
+ *     tags: [Rooms]
+ *     description: Leave a room (requires authentication)
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Room ID
+ *         schema:
+ *           type: string
+ *           example: "507f1f77bcf86cd799439012"
+ *     responses:
+ *       200:
+ *         description: Successfully left the room
+ *       400:
+ *         description: Invalid room ID
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Room not found
+ *       409:
+ *         description: Not a participant in this room
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.post("/:id/leave", requireAuth, leaveRoom);
+
+/**
+ * @swagger
+ * /rooms/{id}/participants:
+ *   get:
+ *     summary: Get room participants
+ *     tags: [Rooms]
+ *     description: Get all participants in a room (requires authentication and room access)
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Room ID
+ *         schema:
+ *           type: string
+ *           example: "507f1f77bcf86cd799439012"
+ *     responses:
+ *       200:
+ *         description: Participants retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Room participants retrieved successfully"
+ *                 participants:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/UserRoom'
+ *                 total:
+ *                   type: number
+ *                   example: 5
+ *       400:
+ *         description: Invalid room ID
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: No access to this room
+ *       404:
+ *         description: Room not found
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get("/:id/participants", requireAuth, getRoomParticipants);
 
 export { router };

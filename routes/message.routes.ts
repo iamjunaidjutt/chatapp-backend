@@ -1,6 +1,11 @@
-import express, { Request, Response } from "express";
-import mongoose from "mongoose";
-import { Message, IMessage } from "../models";
+import express from "express";
+import {
+	getMessageById,
+	updateMessage,
+	deleteMessage,
+	searchMessages,
+} from "../controllers/message.controllers";
+import { requireAuth } from "../middlewares/auth.middlewares";
 
 const router = express.Router();
 
@@ -13,59 +18,13 @@ const router = express.Router();
 
 /**
  * @swagger
- * /messages:
- *   post:
- *     summary: Send a message
- *     tags: [Messages]
- *     description: Send a new message to a room
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - content
- *               - userId
- *               - roomId
- *             properties:
- *               content:
- *                 type: string
- *                 example: "Hello, everyone!"
- *               userId:
- *                 type: string
- *                 example: "507f1f77bcf86cd799439011"
- *               roomId:
- *                 type: string
- *                 example: "507f1f77bcf86cd799439012"
- *     responses:
- *       201:
- *         description: Message sent successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Message'
- *       400:
- *         description: Bad request - validation error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         $ref: '#/components/responses/InternalServerError'
- */
-router.post("/", (req: Request, res: Response): void => {
-	const messageData = req.body;
-	res.status(201).json({ message: "Message sent", data: messageData });
-});
-
-/**
- * @swagger
  * /messages/{id}:
  *   get:
  *     summary: Get message by ID
  *     tags: [Messages]
- *     description: Retrieve a specific message by its ID
+ *     description: Retrieve a specific message by its ID (requires authentication and room access)
+ *     security:
+ *       - sessionAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -80,16 +39,25 @@ router.post("/", (req: Request, res: Response): void => {
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Message'
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Message retrieved successfully"
+ *                 data:
+ *                   $ref: '#/components/schemas/Message'
+ *       400:
+ *         description: Invalid message ID
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: No access to this message
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/:id", (req: Request, res: Response): void => {
-	const { id } = req.params;
-	res.json({ message: `Get message with ID: ${id}` });
-});
+router.get("/:id", requireAuth, getMessageById);
 
 /**
  * @swagger
@@ -97,7 +65,9 @@ router.get("/:id", (req: Request, res: Response): void => {
  *   put:
  *     summary: Edit a message
  *     tags: [Messages]
- *     description: Edit an existing message (only by the sender)
+ *     description: Edit an existing message (requires authentication and ownership)
+ *     security:
+ *       - sessionAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -117,30 +87,34 @@ router.get("/:id", (req: Request, res: Response): void => {
  *             properties:
  *               content:
  *                 type: string
+ *                 description: Updated message content
  *                 example: "Hello, everyone! (edited)"
+ *                 maxLength: 1000
  *     responses:
  *       200:
  *         description: Message updated successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Message'
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Message updated successfully"
+ *                 data:
+ *                   $ref: '#/components/schemas/Message'
+ *       400:
+ *         description: Bad request - validation error
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Forbidden - can only edit your own messages or message too old
  *       404:
  *         $ref: '#/components/responses/NotFound'
- *       403:
- *         description: Forbidden - can only edit your own messages
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.put("/:id", (req: Request, res: Response): void => {
-	const { id } = req.params;
-	const { content } = req.body;
-	res.json({ message: `Update message with ID: ${id}`, content });
-});
+router.put("/:id", requireAuth, updateMessage);
 
 /**
  * @swagger
@@ -148,7 +122,9 @@ router.put("/:id", (req: Request, res: Response): void => {
  *   delete:
  *     summary: Delete a message
  *     tags: [Messages]
- *     description: Delete a message (only by the sender or admin)
+ *     description: Delete a message (requires authentication and ownership)
+ *     security:
+ *       - sessionAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -168,20 +144,82 @@ router.put("/:id", (req: Request, res: Response): void => {
  *                 message:
  *                   type: string
  *                   example: "Message deleted successfully"
- *       404:
- *         $ref: '#/components/responses/NotFound'
+ *       400:
+ *         description: Invalid message ID
+ *       401:
+ *         description: Not authenticated
  *       403:
  *         description: Forbidden - can only delete your own messages
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete("/:id", (req: Request, res: Response): void => {
-	const { id } = req.params;
-	res.json({ message: `Delete message with ID: ${id}` });
-});
+router.delete("/:id", requireAuth, deleteMessage);
+
+/**
+ * @swagger
+ * /messages/search/{roomId}:
+ *   get:
+ *     summary: Search messages in a room
+ *     tags: [Messages]
+ *     description: Search for messages in a specific room (requires authentication and room access)
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         description: Room ID to search messages in
+ *         schema:
+ *           type: string
+ *           example: "507f1f77bcf86cd799439012"
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         description: Search query
+ *         schema:
+ *           type: string
+ *           example: "hello"
+ *       - in: query
+ *         name: limit
+ *         description: Number of messages to return (max 50)
+ *         schema:
+ *           type: integer
+ *           example: 20
+ *           maximum: 50
+ *     responses:
+ *       200:
+ *         description: Search completed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Messages search completed"
+ *                 query:
+ *                   type: string
+ *                   example: "hello"
+ *                 messages:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Message'
+ *                 total:
+ *                   type: number
+ *                   example: 5
+ *       400:
+ *         description: Bad request - missing or invalid parameters
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: No access to this room
+ *       404:
+ *         description: Room not found
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get("/search/:id", requireAuth, searchMessages);
 
 export { router };

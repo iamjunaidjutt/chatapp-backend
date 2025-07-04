@@ -5,6 +5,9 @@ export interface IMessage extends Document {
 	sentAt: Date;
 	userId: mongoose.Types.ObjectId;
 	roomId: mongoose.Types.ObjectId;
+	messageType: "text" | "image" | "file";
+	isEdited: boolean;
+	editedAt?: Date;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -32,6 +35,18 @@ const MessageSchema = new Schema<IMessage>(
 			ref: "Room",
 			required: true,
 		},
+		messageType: {
+			type: String,
+			enum: ["text", "image", "file"],
+			default: "text",
+		},
+		isEdited: {
+			type: Boolean,
+			default: false,
+		},
+		editedAt: {
+			type: Date,
+		},
 	},
 	{
 		timestamps: true,
@@ -41,5 +56,7 @@ const MessageSchema = new Schema<IMessage>(
 // Index for better performance
 MessageSchema.index({ roomId: 1, sentAt: -1 });
 MessageSchema.index({ userId: 1 });
+// Text search index for message content
+MessageSchema.index({ content: "text" });
 
 export const Message = mongoose.model<IMessage>("Message", MessageSchema);

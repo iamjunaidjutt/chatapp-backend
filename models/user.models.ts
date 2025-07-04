@@ -9,7 +9,6 @@ export interface IUser extends Document {
 	avatarUrl?: string;
 	createdAt: Date;
 	updatedAt: Date;
-	comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
 export enum UserRole {

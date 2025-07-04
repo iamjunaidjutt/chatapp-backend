@@ -3,6 +3,7 @@ import { Router } from "express";
 import { router as userRouter } from "./user.routes";
 import { router as roomRouter } from "./room.routes";
 import { router as messageRouter } from "./message.routes";
+import { router as userRoomRouter } from "./user-room.routes";
 import { authRouter } from "./auth.routes";
 
 const router = Router();
@@ -12,6 +13,7 @@ router.use("/auth", authRouter);
 router.use("/users", userRouter);
 router.use("/rooms", roomRouter);
 router.use("/messages", messageRouter);
+router.use("/user-rooms", userRoomRouter);
 
 /**
  * @swagger

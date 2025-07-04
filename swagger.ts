@@ -88,16 +88,44 @@ const options = {
 							description: "The room name (null for DMs)",
 							example: "general",
 							nullable: true,
+							maxLength: 50,
 						},
 						isPrivate: {
 							type: "boolean",
 							description: "Whether the room is private",
 							example: false,
+							default: false,
+						},
+						description: {
+							type: "string",
+							description: "Room description",
+							example: "A room for general discussions",
+							maxLength: 500,
+						},
+						maxParticipants: {
+							type: "number",
+							description:
+								"Maximum number of participants (null means unlimited)",
+							example: 100,
+							minimum: 2,
+							maximum: 1000,
+							nullable: true,
+						},
+						createdBy: {
+							type: "string",
+							description:
+								"The id of the user who created the room",
+							example: "507f1f77bcf86cd799439011",
 						},
 						createdAt: {
 							type: "string",
 							format: "date-time",
 							description: "The date the room was created",
+						},
+						updatedAt: {
+							type: "string",
+							format: "date-time",
+							description: "The date the room was last updated",
 						},
 					},
 				},
@@ -114,6 +142,7 @@ const options = {
 							type: "string",
 							description: "The message content",
 							example: "Hello, everyone!",
+							maxLength: 1000,
 						},
 						sentAt: {
 							type: "string",
@@ -131,6 +160,99 @@ const options = {
 							description:
 								"The id of the room the message was sent to",
 							example: "507f1f77bcf86cd799439012",
+						},
+						messageType: {
+							type: "string",
+							description: "The type of message",
+							enum: ["text", "image", "file"],
+							default: "text",
+							example: "text",
+						},
+						isEdited: {
+							type: "boolean",
+							description: "Whether the message has been edited",
+							default: false,
+							example: false,
+						},
+						editedAt: {
+							type: "string",
+							format: "date-time",
+							description:
+								"The date the message was last edited (if edited)",
+						},
+						createdAt: {
+							type: "string",
+							format: "date-time",
+							description: "The date the message was created",
+						},
+						updatedAt: {
+							type: "string",
+							format: "date-time",
+							description:
+								"The date the message was last updated",
+						},
+					},
+				},
+				UserRoom: {
+					type: "object",
+					required: ["userId", "roomId", "role"],
+					properties: {
+						id: {
+							type: "string",
+							description:
+								"The auto-generated id of the user-room relationship",
+							example: "507f1f77bcf86cd799439014",
+						},
+						userId: {
+							type: "string",
+							description: "The id of the user",
+							example: "507f1f77bcf86cd799439011",
+						},
+						roomId: {
+							type: "string",
+							description: "The id of the room",
+							example: "507f1f77bcf86cd799439012",
+						},
+						role: {
+							type: "string",
+							enum: ["member", "admin", "moderator"],
+							description: "The user's role in the room",
+							example: "member",
+						},
+						joinedAt: {
+							type: "string",
+							format: "date-time",
+							description: "The date the user joined the room",
+						},
+						lastSeenAt: {
+							type: "string",
+							format: "date-time",
+							description:
+								"The date the user was last seen in the room",
+						},
+						isActive: {
+							type: "boolean",
+							description:
+								"Whether the user is currently active in the room",
+							example: true,
+						},
+						notifications: {
+							type: "boolean",
+							description:
+								"Whether the user has notifications enabled for this room",
+							example: true,
+						},
+						createdAt: {
+							type: "string",
+							format: "date-time",
+							description:
+								"The date the relationship was created",
+						},
+						updatedAt: {
+							type: "string",
+							format: "date-time",
+							description:
+								"The date the relationship was last updated",
 						},
 					},
 				},
