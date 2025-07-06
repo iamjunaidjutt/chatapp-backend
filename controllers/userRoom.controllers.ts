@@ -1,16 +1,17 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
 import { UserRoom, Room, User, IUserRoom } from "../models";
+import { HybridAuthRequest } from "../middlewares/hybrid-auth.middlewares";
 
 /**
  * Get all rooms for a user
  */
 export const getUserRooms = async (
-	req: Request,
+	req: HybridAuthRequest,
 	res: Response
 ): Promise<void> => {
 	try {
-		const currentUserId = (req.session as any).userId;
+		const currentUserId = req.user?.id;
 
 		const userRooms = await UserRoom.find({
 			userId: currentUserId,
@@ -43,12 +44,12 @@ export const getUserRooms = async (
  * Get all participants in a room
  */
 export const getRoomParticipants = async (
-	req: Request,
+	req: HybridAuthRequest,
 	res: Response
 ): Promise<void> => {
 	try {
 		const { id: roomId } = req.params;
-		const currentUserId = (req.session as any).userId;
+		const currentUserId = req.user?.id;
 
 		// Validate that roomId exists and is a valid ObjectId
 		if (!roomId || !mongoose.Types.ObjectId.isValid(roomId)) {
@@ -101,10 +102,13 @@ export const getRoomParticipants = async (
 /**
  * Join a room
  */
-export const joinRoom = async (req: Request, res: Response): Promise<void> => {
+export const joinRoom = async (
+	req: HybridAuthRequest,
+	res: Response
+): Promise<void> => {
 	try {
 		const { id: roomId } = req.params;
-		const currentUserId = (req.session as any).userId;
+		const currentUserId = req.user?.id;
 
 		// Validate that roomId exists and is a valid ObjectId
 		if (!roomId || !mongoose.Types.ObjectId.isValid(roomId)) {
@@ -187,10 +191,13 @@ export const joinRoom = async (req: Request, res: Response): Promise<void> => {
 /**
  * Leave a room
  */
-export const leaveRoom = async (req: Request, res: Response): Promise<void> => {
+export const leaveRoom = async (
+	req: HybridAuthRequest,
+	res: Response
+): Promise<void> => {
 	try {
 		const { id: roomId } = req.params;
-		const currentUserId = (req.session as any).userId;
+		const currentUserId = req.user?.id;
 
 		// Validate that roomId exists and is a valid ObjectId
 		if (!roomId || !mongoose.Types.ObjectId.isValid(roomId)) {
@@ -255,13 +262,13 @@ export const leaveRoom = async (req: Request, res: Response): Promise<void> => {
  * Update user role in room (admin only)
  */
 export const updateUserRole = async (
-	req: Request,
+	req: HybridAuthRequest,
 	res: Response
 ): Promise<void> => {
 	try {
 		const { roomId, userId } = req.params;
 		const { role } = req.body;
-		const currentUserId = (req.session as any).userId;
+		const currentUserId = req.user?.id;
 
 		// Validate inputs
 		if (!roomId || !mongoose.Types.ObjectId.isValid(roomId)) {
@@ -334,12 +341,12 @@ export const updateUserRole = async (
  * Update last seen timestamp for user in room
  */
 export const updateLastSeen = async (
-	req: Request,
+	req: HybridAuthRequest,
 	res: Response
 ): Promise<void> => {
 	try {
 		const { roomId } = req.params;
-		const currentUserId = (req.session as any).userId;
+		const currentUserId = req.user?.id;
 
 		// Validate that roomId exists and is a valid ObjectId
 		if (!roomId || !mongoose.Types.ObjectId.isValid(roomId)) {

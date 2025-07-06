@@ -3,8 +3,12 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 import { IUser, User } from "../models";
+import { HybridAuthRequest } from "../middlewares/hybrid-auth.middlewares";
 
-const getAllUsers = async (req: Request, res: Response): Promise<void> => {
+const getAllUsers = async (
+	req: HybridAuthRequest,
+	res: Response
+): Promise<void> => {
 	try {
 		const users = await User.find({}).select("-password");
 		res.status(200).json({
@@ -17,7 +21,10 @@ const getAllUsers = async (req: Request, res: Response): Promise<void> => {
 	}
 };
 
-const getUserById = async (req: Request, res: Response): Promise<void> => {
+const getUserById = async (
+	req: HybridAuthRequest,
+	res: Response
+): Promise<void> => {
 	try {
 		const { id } = req.params;
 
@@ -103,7 +110,10 @@ const login = async (req: Request, res: Response): Promise<void> => {
 	}
 };
 
-const updateUser = async (req: Request, res: Response): Promise<void> => {
+const updateUser = async (
+	req: HybridAuthRequest,
+	res: Response
+): Promise<void> => {
 	try {
 		const { id } = req.params;
 		const { username, email, avatarUrl } = req.body;
@@ -160,7 +170,10 @@ const updateUser = async (req: Request, res: Response): Promise<void> => {
 	}
 };
 
-const deleteUser = async (req: Request, res: Response): Promise<void> => {
+const deleteUser = async (
+	req: HybridAuthRequest,
+	res: Response
+): Promise<void> => {
 	try {
 		const { id } = req.params;
 

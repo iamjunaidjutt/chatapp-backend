@@ -5,7 +5,7 @@ import {
 	deleteMessage,
 	searchMessages,
 } from "../controllers/message.controllers";
-import { requireAuth } from "../middlewares/auth.middlewares";
+import { verifyHybridJWT } from "../middlewares/hybrid-auth.middlewares";
 
 const router = express.Router();
 
@@ -24,7 +24,7 @@ const router = express.Router();
  *     tags: [Messages]
  *     description: Retrieve a specific message by its ID (requires authentication and room access)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -57,7 +57,7 @@ const router = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/:id", requireAuth, getMessageById);
+router.get("/:id", verifyHybridJWT, getMessageById);
 
 /**
  * @swagger
@@ -67,7 +67,7 @@ router.get("/:id", requireAuth, getMessageById);
  *     tags: [Messages]
  *     description: Edit an existing message (requires authentication and ownership)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -114,7 +114,7 @@ router.get("/:id", requireAuth, getMessageById);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.put("/:id", requireAuth, updateMessage);
+router.put("/:id", verifyHybridJWT, updateMessage);
 
 /**
  * @swagger
@@ -124,7 +124,7 @@ router.put("/:id", requireAuth, updateMessage);
  *     tags: [Messages]
  *     description: Delete a message (requires authentication and ownership)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -155,7 +155,7 @@ router.put("/:id", requireAuth, updateMessage);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete("/:id", requireAuth, deleteMessage);
+router.delete("/:id", verifyHybridJWT, deleteMessage);
 
 /**
  * @swagger
@@ -165,7 +165,7 @@ router.delete("/:id", requireAuth, deleteMessage);
  *     tags: [Messages]
  *     description: Search for messages in a specific room (requires authentication and room access)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     parameters:
  *       - in: path
  *         name: roomId
@@ -220,6 +220,6 @@ router.delete("/:id", requireAuth, deleteMessage);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/search/:id", requireAuth, searchMessages);
+router.get("/search/:id", verifyHybridJWT, searchMessages);
 
 export { router };

@@ -1,12 +1,13 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import mongoose from "mongoose";
 import { Room, UserRoom, IRoom } from "../models";
+import { HybridAuthRequest } from "../middlewares/hybrid-auth.middlewares";
 
 /**
  * Get all rooms
  */
 export const getAllRooms = async (
-	req: Request,
+	req: HybridAuthRequest,
 	res: Response
 ): Promise<void> => {
 	try {
@@ -46,7 +47,7 @@ export const getAllRooms = async (
  * Get room by ID
  */
 export const getRoomById = async (
-	req: Request,
+	req: HybridAuthRequest,
 	res: Response
 ): Promise<void> => {
 	try {
@@ -75,7 +76,7 @@ export const getRoomById = async (
 		});
 
 		const isParticipant = await UserRoom.findOne({
-			userId: (req.session as any).userId,
+			userId: req.user?.id,
 			roomId: id,
 			isActive: true,
 		});
@@ -101,7 +102,7 @@ export const getRoomById = async (
  * Create a new room
  */
 export const createRoom = async (
-	req: Request,
+	req: HybridAuthRequest,
 	res: Response
 ): Promise<void> => {
 	try {
@@ -111,7 +112,12 @@ export const createRoom = async (
 			isPrivate = false,
 			maxParticipants,
 		} = req.body;
-		const currentUserId = (req.session as any).userId;
+		const currentUserId = req.user?.id;
+
+		if (!currentUserId) {
+			res.status(401).json({ message: "Authentication required" });
+			return;
+		}
 
 		// Validation
 		if (!name || name.trim().length === 0) {
@@ -198,13 +204,13 @@ export const createRoom = async (
  * Update room
  */
 export const updateRoom = async (
-	req: Request,
+	req: HybridAuthRequest,
 	res: Response
 ): Promise<void> => {
 	try {
 		const { id } = req.params;
 		const { name, description, isPrivate, maxParticipants } = req.body;
-		const currentUserId = (req.session as any).userId;
+		const currentUserId = req.user?.id;
 
 		// Validate that ID exists and is a valid ObjectId
 		if (!id || !mongoose.Types.ObjectId.isValid(id)) {
@@ -310,12 +316,12 @@ export const updateRoom = async (
  * Delete room
  */
 export const deleteRoom = async (
-	req: Request,
+	req: HybridAuthRequest,
 	res: Response
 ): Promise<void> => {
 	try {
 		const { id } = req.params;
-		const currentUserId = (req.session as any).userId;
+		const currentUserId = req.user?.id;
 
 		// Validate that ID exists and is a valid ObjectId
 		if (!id || !mongoose.Types.ObjectId.isValid(id)) {

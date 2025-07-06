@@ -1,16 +1,25 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 import { User } from "../models";
-import { ExpressSessionManager } from "../utils/express-session-manager.utils";
+import {
+	generateHybridJWT,
+	revokeJWTSession,
+	revokeAllUserSessions,
+	getUserSessions,
+	HybridAuthRequest,
+} from "../middlewares/hybrid-auth.middlewares";
 /**
  * @swagger
  * tags:
  *   name: Auth
  *   description: User authentication and registration
  */
-const register = async (req: Request, res: Response): Promise<void> => {
+const register = async (
+	req: HybridAuthRequest,
+	res: Response
+): Promise<void> => {
 	try {
 		const { username, email, password, avatarUrl, role } = req.body;
 		if (!username || !email || !password) {
@@ -40,7 +49,7 @@ const register = async (req: Request, res: Response): Promise<void> => {
 		res.status(201).json({
 			message: "User registered successfully",
 			user: {
-				id: user._id,
+				id: (user._id as any).toString(),
 				username: user.username,
 				email: user.email,
 				avatarUrl: user.avatarUrl,
@@ -55,7 +64,10 @@ const register = async (req: Request, res: Response): Promise<void> => {
 	}
 };
 
-const loginWithJwt = async (req: Request, res: Response): Promise<void> => {
+const loginWithHybridJWT = async (
+	req: HybridAuthRequest,
+	res: Response
+): Promise<void> => {
 	try {
 		const { email, password } = req.body;
 
@@ -78,112 +90,51 @@ const loginWithJwt = async (req: Request, res: Response): Promise<void> => {
 			return;
 		}
 
-		// Generate JWT token
-		const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET!, {
-			expiresIn: "1h",
-		});
+		// Generate hybrid JWT token with session
+		const { token, sessionId, expiresAt } = await generateHybridJWT(
+			{
+				id: (user._id as any).toString(),
+				email: user.email,
+				username: user.username,
+			},
+			req
+		);
 
-		res.status(200).json({ token });
+		res.status(200).json({
+			message: "Login successful",
+			token,
+			sessionId,
+			expiresAt,
+			user: {
+				id: (user._id as any).toString(),
+				username: user.username,
+				email: user.email,
+				avatarUrl: user.avatarUrl,
+				role: user.role,
+			},
+		});
 	} catch (error) {
 		console.error("Error logging in:", error);
 		res.status(500).json({ message: "Internal server error" });
 	}
 };
 
-const loginWithSession = async (req: Request, res: Response): Promise<void> => {
+const logoutAllDevices = async (
+	req: HybridAuthRequest,
+	res: Response
+): Promise<void> => {
 	try {
-		const { email, password } = req.body;
-
-		if (!email || !password) {
-			res.status(400).json({
-				message: "Email and password are required",
-			});
+		if (!req.user) {
+			res.status(401).json({ message: "Authentication required" });
 			return;
 		}
 
-		// Find user by email
-		const user = await User.findOne({ email: email.toLowerCase() });
-		if (!user) {
-			res.status(401).json({ message: "Invalid email or password" });
-			return;
-		}
-
-		// Check password
-		const isValidPassword = await bcrypt.compare(password, user.password);
-		if (!isValidPassword) {
-			res.status(401).json({ message: "Invalid email or password" });
-			return;
-		}
-
-		// Create session
-		(req.session as any).userId = user._id?.toString();
-		(req.session as any).username = user.username;
-		(req.session as any).email = user.email;
-		(req.session as any).isAuthenticated = true;
-
-		// Limit concurrent sessions after creating the session
-		if (user._id) {
-			await ExpressSessionManager.limitConcurrentSessions(
-				user._id.toString(),
-				3
-			);
-		}
+		// Revoke all sessions for the user
+		const revokedCount = await revokeAllUserSessions(req.user.id);
 
 		res.json({
-			message: "Login successful",
-			user: {
-				id: user._id,
-				username: user.username,
-				email: user.email,
-				avatarUrl: user.avatarUrl,
-			},
-		});
-	} catch (error) {
-		console.error("Login error:", error);
-		res.status(500).json({ message: "Internal server error" });
-	}
-};
-
-const logoutWithSession = (req: Request, res: Response): void => {
-	req.session.destroy((err) => {
-		if (err) {
-			console.error("Session destroy error:", err);
-			res.status(500).json({ message: "Could not log out" });
-			return;
-		}
-		res.clearCookie("connect.sid"); // Clear the session cookie
-		res.json({ message: "Logout successful" });
-	});
-};
-
-const logoutAllDevices = async (req: Request, res: Response): Promise<void> => {
-	try {
-		if (
-			!(req.session as any).isAuthenticated ||
-			!(req.session as any).userId
-		) {
-			res.status(401).json({ message: "Not authenticated" });
-			return;
-		}
-
-		const userId = (req.session as any).userId;
-		const currentSessionId = ExpressSessionManager.getCurrentSessionId(req);
-
-		// Destroy all sessions for this user
-		const destroyedCount =
-			await ExpressSessionManager.destroyAllUserSessions(userId);
-
-		// Also destroy current session
-		req.session.destroy((err) => {
-			if (err) {
-				console.error("Session destroy error:", err);
-			}
-		});
-
-		res.clearCookie("connect.sid");
-		res.json({
-			message: "Logged out from all devices",
-			sessionsDestroyed: destroyedCount + 1, // +1 for current session
+			message: `Successfully logged out from ${revokedCount} devices`,
+			revokedSessions: revokedCount,
 		});
 	} catch (error) {
 		console.error("Logout all devices error:", error);
@@ -192,43 +143,29 @@ const logoutAllDevices = async (req: Request, res: Response): Promise<void> => {
 };
 
 const getActiveSessions = async (
-	req: Request,
+	req: HybridAuthRequest,
 	res: Response
 ): Promise<void> => {
 	try {
-		if (
-			!(req.session as any).isAuthenticated ||
-			!(req.session as any).userId
-		) {
-			res.status(401).json({ message: "Not authenticated" });
+		if (!req.user) {
+			res.status(401).json({ message: "Authentication required" });
 			return;
 		}
 
-		const userId = (req.session as any).userId;
-		const sessions = await ExpressSessionManager.getUserActiveSessions(
-			userId
-		);
-
-		// Parse and clean up session data for response
-		const sessionData = sessions.map((session) => {
-			let sessionInfo;
-			try {
-				sessionInfo = JSON.parse(session.session);
-			} catch (e) {
-				sessionInfo = {};
-			}
-
-			return {
-				id: session._id,
-				expires: session.expires,
-				lastActivity: sessionInfo.cookie?.expires || session.expires,
-				isCurrent: session._id === req.sessionID,
-			};
-		});
+		// Get user's active sessions using the new hybrid system
+		const sessions = await getUserSessions(req.user.id);
 
 		res.json({
-			sessions: sessionData,
-			total: sessionData.length,
+			sessions: sessions.map((session) => ({
+				id: session._id,
+				userAgent: session.userAgent,
+				ipAddress: session.ipAddress,
+				createdAt: session.createdAt,
+				lastUsed: session.lastUsed,
+				expiresAt: session.expiresAt,
+				isCurrent: session._id.toString() === req.sessionId,
+			})),
+			total: sessions.length,
 		});
 	} catch (error) {
 		console.error("Get active sessions error:", error);
@@ -236,30 +173,30 @@ const getActiveSessions = async (
 	}
 };
 
-const getCurrentUser = async (req: Request, res: Response): Promise<void> => {
+const getCurrentUser = async (
+	req: HybridAuthRequest,
+	res: Response
+): Promise<void> => {
 	try {
-		if (
-			!(req.session as any).isAuthenticated ||
-			!(req.session as any).userId
-		) {
-			res.status(401).json({ message: "Not authenticated" });
+		if (!req.user) {
+			res.status(401).json({ message: "Authentication required" });
 			return;
 		}
 
-		const user = await User.findById((req.session as any).userId).select(
-			"-password"
-		);
+		// Get user details from database
+		const user = await User.findById(req.user.id).select("-password");
 		if (!user) {
-			res.status(401).json({ message: "User not found" });
+			res.status(404).json({ message: "User not found" });
 			return;
 		}
 
 		res.json({
 			user: {
-				id: user._id,
+				id: (user._id as any).toString(),
 				username: user.username,
 				email: user.email,
 				avatarUrl: user.avatarUrl,
+				role: user.role,
 				createdAt: user.createdAt,
 				updatedAt: user.updatedAt,
 			},
@@ -271,25 +208,26 @@ const getCurrentUser = async (req: Request, res: Response): Promise<void> => {
 };
 
 // Admin endpoint: Get session statistics
-const getSessionStats = async (req: Request, res: Response): Promise<void> => {
+const getSessionStats = async (
+	req: HybridAuthRequest,
+	res: Response
+): Promise<void> => {
 	try {
-		if (
-			!(req.session as any).isAuthenticated ||
-			!(req.session as any).userId
-		) {
-			res.status(401).json({ message: "Not authenticated" });
+		if (!req.user) {
+			res.status(401).json({ message: "Authentication required" });
 			return;
 		}
 
-		// Check if user is admin (you can modify this based on your role system)
-		const user = await User.findById((req.session as any).userId);
-		if (!user || user.role !== "admin") {
-			res.status(403).json({ message: "Admin access required" });
-			return;
-		}
+		// This could be enhanced to check for admin role
+		// For now, any authenticated user can see basic stats
+		const totalSessions = await getUserSessions(req.user.id);
+		const activeCount = totalSessions.length;
 
-		const stats = await ExpressSessionManager.getSessionStats();
-		res.json(stats);
+		res.json({
+			activeSessions: activeCount,
+			totalSessions: activeCount,
+			userSessions: totalSessions,
+		});
 	} catch (error) {
 		console.error("Get session stats error:", error);
 		res.status(500).json({ message: "Internal server error" });
@@ -298,27 +236,27 @@ const getSessionStats = async (req: Request, res: Response): Promise<void> => {
 
 // Admin endpoint: Cleanup expired sessions
 const cleanupExpiredSessions = async (
-	req: Request,
+	req: HybridAuthRequest,
 	res: Response
 ): Promise<void> => {
 	try {
-		if (
-			!(req.session as any).isAuthenticated ||
-			!(req.session as any).userId
-		) {
-			res.status(401).json({ message: "Not authenticated" });
+		if (!req.user) {
+			res.status(401).json({ message: "Authentication required" });
 			return;
 		}
 
-		// Check if user is admin
-		const user = await User.findById((req.session as any).userId);
+		// Check if user is admin (you can modify this based on your role system)
+		const user = await User.findById(req.user.id);
 		if (!user || user.role !== "admin") {
 			res.status(403).json({ message: "Admin access required" });
 			return;
 		}
 
-		const cleanedCount =
-			await ExpressSessionManager.cleanupExpiredSessions();
+		// Use the new hybrid system's cleanup function
+		const { cleanupExpiredSessions: cleanupFn } = await import(
+			"../middlewares/hybrid-auth.middlewares"
+		);
+		const cleanedCount = await cleanupFn();
 		res.json({
 			message: "Expired sessions cleaned up",
 			cleanedCount,
@@ -329,11 +267,27 @@ const cleanupExpiredSessions = async (
 	}
 };
 
+const logout = async (req: HybridAuthRequest, res: Response): Promise<void> => {
+	try {
+		if (!req.sessionId) {
+			res.status(401).json({ message: "Authentication required" });
+			return;
+		}
+
+		// Revoke current session
+		await revokeJWTSession(req.sessionId);
+
+		res.json({ message: "Logged out successfully" });
+	} catch (error) {
+		console.error("Logout error:", error);
+		res.status(500).json({ message: "Internal server error" });
+	}
+};
+
 export {
 	register,
-	loginWithJwt,
-	loginWithSession,
-	logoutWithSession,
+	loginWithHybridJWT as login,
+	logout,
 	logoutAllDevices,
 	getActiveSessions,
 	getCurrentUser,

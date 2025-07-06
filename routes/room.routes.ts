@@ -17,7 +17,10 @@ import {
 	updateUserRole,
 	updateLastSeen,
 } from "../controllers/userRoom.controllers";
-import { requireAuth } from "../middlewares/auth.middlewares";
+import {
+	verifyHybridJWT,
+	optionalHybridJWT,
+} from "../middlewares/hybrid-auth.middlewares";
 
 const router = express.Router();
 
@@ -34,9 +37,9 @@ const router = express.Router();
  *   get:
  *     summary: Get all rooms
  *     tags: [Rooms]
- *     description: Retrieve a list of all chat rooms (requires authentication)
+ *     description: Retrieve a list of all chat rooms (authentication optional)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     responses:
  *       200:
  *         description: List of rooms retrieved successfully
@@ -60,7 +63,7 @@ const router = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/", requireAuth, getAllRooms);
+router.get("/", verifyHybridJWT, getAllRooms);
 
 /**
  * @swagger
@@ -70,7 +73,7 @@ router.get("/", requireAuth, getAllRooms);
  *     tags: [Rooms]
  *     description: Retrieve a specific room by its ID (requires authentication)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -101,7 +104,7 @@ router.get("/", requireAuth, getAllRooms);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/:id", requireAuth, getRoomById);
+router.get("/:id", verifyHybridJWT, getRoomById);
 
 /**
  * @swagger
@@ -111,7 +114,7 @@ router.get("/:id", requireAuth, getRoomById);
  *     tags: [Rooms]
  *     description: Create a new chat room (requires authentication)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -163,7 +166,7 @@ router.get("/:id", requireAuth, getRoomById);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post("/", requireAuth, createRoom);
+router.post("/", verifyHybridJWT, createRoom);
 
 /**
  * @swagger
@@ -173,7 +176,7 @@ router.post("/", requireAuth, createRoom);
  *     tags: [Rooms]
  *     description: Retrieve all messages in a specific room (requires authentication and room access)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -244,7 +247,7 @@ router.post("/", requireAuth, createRoom);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/:id/messages", requireAuth, getRoomMessages);
+router.get("/:id/messages", verifyHybridJWT, getRoomMessages);
 
 /**
  * @swagger
@@ -254,7 +257,7 @@ router.get("/:id/messages", requireAuth, getRoomMessages);
  *     tags: [Rooms]
  *     description: Send a new message to a specific room (requires authentication and room access)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -307,7 +310,7 @@ router.get("/:id/messages", requireAuth, getRoomMessages);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post("/:id/messages", requireAuth, sendMessage);
+router.post("/:id/messages", verifyHybridJWT, sendMessage);
 
 /**
  * @swagger
@@ -317,7 +320,7 @@ router.post("/:id/messages", requireAuth, sendMessage);
  *     tags: [Rooms]
  *     description: Update room information (requires authentication and ownership)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -356,7 +359,7 @@ router.post("/:id/messages", requireAuth, sendMessage);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.put("/:id", requireAuth, updateRoom);
+router.put("/:id", verifyHybridJWT, updateRoom);
 
 /**
  * @swagger
@@ -366,7 +369,7 @@ router.put("/:id", requireAuth, updateRoom);
  *     tags: [Rooms]
  *     description: Delete a room (requires authentication and ownership)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -389,7 +392,7 @@ router.put("/:id", requireAuth, updateRoom);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete("/:id", requireAuth, deleteRoom);
+router.delete("/:id", verifyHybridJWT, deleteRoom);
 
 /**
  * @swagger
@@ -399,7 +402,7 @@ router.delete("/:id", requireAuth, deleteRoom);
  *     tags: [Rooms]
  *     description: Join a room as a participant (requires authentication)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -422,7 +425,7 @@ router.delete("/:id", requireAuth, deleteRoom);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post("/:id/join", requireAuth, joinRoom);
+router.post("/:id/join", verifyHybridJWT, joinRoom);
 
 /**
  * @swagger
@@ -432,7 +435,7 @@ router.post("/:id/join", requireAuth, joinRoom);
  *     tags: [Rooms]
  *     description: Leave a room (requires authentication)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -455,7 +458,7 @@ router.post("/:id/join", requireAuth, joinRoom);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post("/:id/leave", requireAuth, leaveRoom);
+router.post("/:id/leave", verifyHybridJWT, leaveRoom);
 
 /**
  * @swagger
@@ -465,7 +468,7 @@ router.post("/:id/leave", requireAuth, leaveRoom);
  *     tags: [Rooms]
  *     description: Get all participants in a room (requires authentication and room access)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -503,6 +506,6 @@ router.post("/:id/leave", requireAuth, leaveRoom);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/:id/participants", requireAuth, getRoomParticipants);
+router.get("/:id/participants", verifyHybridJWT, getRoomParticipants);
 
 export { router };

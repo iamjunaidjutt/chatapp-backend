@@ -4,15 +4,12 @@ import cors from "cors";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
-import session from "express-session";
-import MongoStore from "connect-mongo";
 
 import { router } from "./routes";
 import { logger } from "./middlewares/logger.middlewares";
 import { errorHandler } from "./middlewares/error-handler.middlewares";
 import { config } from "./config";
 import { setupSwagger } from "./swagger";
-import { ExpressSessionManager } from "./utils/express-session-manager.utils";
 
 async function startServer() {
 	try {
@@ -26,33 +23,9 @@ async function startServer() {
 		// 2) Build Express
 		const app = express();
 
-		const sessionStore = MongoStore.create({
-			mongoUrl: dbUrl,
-			collectionName: "sessions",
-			ttl: 1 * 24 * 60 * 60, // 1 day in seconds
-			autoRemove: "native", // Use MongoDB's native TTL feature
-		});
-
 		app.use(cors());
 		app.use(logger);
 		app.use(express.json());
-
-		// Configure session middleware
-		app.use(
-			session({
-				secret:
-					process.env.SESSION_SECRET ||
-					"your-secret-key-change-in-production",
-				resave: false,
-				saveUninitialized: false,
-				store: sessionStore,
-				cookie: {
-					secure: process.env.NODE_ENV === "production", // HTTPS only in production
-					httpOnly: true, // Prevent XSS attacks
-					maxAge: 1 * 24 * 60 * 60 * 1000, // 1 day in milliseconds
-				},
-			})
-		);
 
 		setupSwagger(app);
 		app.use("/api", router);
@@ -83,8 +56,10 @@ async function startServer() {
 		// 5) Setup periodic session cleanup (every 24 hours)
 		setInterval(async () => {
 			try {
-				const cleanedCount =
-					await ExpressSessionManager.cleanupExpiredSessions();
+				const { cleanupExpiredSessions } = await import(
+					"./middlewares/hybrid-auth.middlewares"
+				);
+				const cleanedCount = await cleanupExpiredSessions();
 				console.log(`🧹 Cleaned up ${cleanedCount} expired sessions`);
 			} catch (error) {
 				console.error("Error during periodic session cleanup:", error);
@@ -94,8 +69,10 @@ async function startServer() {
 		// Run initial cleanup on server start
 		setTimeout(async () => {
 			try {
-				const cleanedCount =
-					await ExpressSessionManager.cleanupExpiredSessions();
+				const { cleanupExpiredSessions } = await import(
+					"./middlewares/hybrid-auth.middlewares"
+				);
+				const cleanedCount = await cleanupExpiredSessions();
 				console.log(
 					`🧹 Initial cleanup: removed ${cleanedCount} expired sessions`
 				);

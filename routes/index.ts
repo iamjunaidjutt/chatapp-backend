@@ -5,6 +5,7 @@ import { router as roomRouter } from "./room.routes";
 import { router as messageRouter } from "./message.routes";
 import { router as userRoomRouter } from "./user-room.routes";
 import { authRouter } from "./auth.routes";
+import sessionRouter from "./session.routes";
 
 const router = Router();
 
@@ -14,6 +15,7 @@ router.use("/users", userRouter);
 router.use("/rooms", roomRouter);
 router.use("/messages", messageRouter);
 router.use("/user-rooms", userRoomRouter);
+router.use("/sessions", sessionRouter);
 
 /**
  * @swagger

@@ -5,7 +5,7 @@ import {
 	updateUser,
 	deleteUser,
 } from "../controllers/user.controllers";
-import { requireAuth } from "../middlewares/auth.middlewares";
+import { verifyHybridJWT } from "../middlewares/hybrid-auth.middlewares";
 
 const router = express.Router();
 
@@ -24,7 +24,7 @@ const router = express.Router();
  *     tags: [Users]
  *     description: Retrieve a list of all users in the system (requires authentication)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     responses:
  *       200:
  *         description: List of users retrieved successfully
@@ -53,7 +53,7 @@ const router = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/", requireAuth, getAllUsers);
+router.get("/", verifyHybridJWT, getAllUsers);
 
 /**
  * @swagger
@@ -63,7 +63,7 @@ router.get("/", requireAuth, getAllUsers);
  *     tags: [Users]
  *     description: Retrieve a specific user by their ID (requires authentication)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -94,7 +94,7 @@ router.get("/", requireAuth, getAllUsers);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/:id", requireAuth, getUserById);
+router.get("/:id", verifyHybridJWT, getUserById);
 
 /**
  * @swagger
@@ -104,7 +104,7 @@ router.get("/:id", requireAuth, getUserById);
  *     tags: [Users]
  *     description: Register a new user in the system
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -161,7 +161,7 @@ router.get("/:id", requireAuth, getUserById);
  *     tags: [Users]
  *     description: Update an existing user's information (requires authentication)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -210,7 +210,7 @@ router.get("/:id", requireAuth, getUserById);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.put("/:id", requireAuth, updateUser);
+router.put("/:id", verifyHybridJWT, updateUser);
 
 /**
  * @swagger
@@ -220,7 +220,7 @@ router.put("/:id", requireAuth, updateUser);
  *     tags: [Users]
  *     description: Delete a user from the system (requires authentication)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -255,6 +255,6 @@ router.put("/:id", requireAuth, updateUser);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete("/:id", requireAuth, deleteUser);
+router.delete("/:id", verifyHybridJWT, deleteUser);
 
 export { router };

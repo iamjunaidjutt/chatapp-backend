@@ -7,9 +7,9 @@ const options = {
 		openapi: "3.0.0",
 		info: {
 			title: "Chat App API",
-			version: "1.0.0",
+			version: "2.0.0",
 			description:
-				"A real-time chat application API built with Express, Socket.IO, and MongoDB",
+				"A real-time chat application API built with Express, Socket.IO, and MongoDB. Uses hybrid JWT + MongoDB session authentication for secure and scalable user management.",
 			contact: {
 				name: "API Support",
 				email: "support@chatapp.com",
@@ -23,11 +23,19 @@ const options = {
 		],
 		components: {
 			securitySchemes: {
-				sessionAuth: {
-					type: "apiKey",
-					in: "cookie",
-					name: "connect.sid",
-					description: "Session-based authentication using cookies",
+				bearerAuth: {
+					type: "http",
+					scheme: "bearer",
+					bearerFormat: "JWT",
+					description:
+						"JWT token authentication. Use the token received from login endpoint.",
+				},
+				hybridAuth: {
+					type: "http",
+					scheme: "bearer",
+					bearerFormat: "JWT",
+					description:
+						"Hybrid JWT + Session authentication. The JWT token is validated and session is maintained in MongoDB.",
 				},
 			},
 			schemas: {
@@ -253,6 +261,90 @@ const options = {
 							format: "date-time",
 							description:
 								"The date the relationship was last updated",
+						},
+					},
+				},
+				Session: {
+					type: "object",
+					properties: {
+						id: {
+							type: "string",
+							description: "The auto-generated id of the session",
+							example: "507f1f77bcf86cd799439015",
+						},
+						userId: {
+							type: "string",
+							description:
+								"The id of the user who owns this session",
+							example: "507f1f77bcf86cd799439011",
+						},
+						jwtToken: {
+							type: "string",
+							description:
+								"The JWT token (not returned in API responses)",
+						},
+						tokenHash: {
+							type: "string",
+							description: "Hash of the JWT token for validation",
+						},
+						userAgent: {
+							type: "string",
+							description: "Browser/client user agent string",
+							example:
+								"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+						},
+						ipAddress: {
+							type: "string",
+							description: "IP address of the client",
+							example: "192.168.1.100",
+						},
+						isActive: {
+							type: "boolean",
+							description:
+								"Whether the session is currently active",
+							example: true,
+						},
+						createdAt: {
+							type: "string",
+							format: "date-time",
+							description: "The date the session was created",
+						},
+						lastUsed: {
+							type: "string",
+							format: "date-time",
+							description: "The date the session was last used",
+						},
+						expiresAt: {
+							type: "string",
+							format: "date-time",
+							description: "The date the session expires",
+						},
+					},
+				},
+				AuthResponse: {
+					type: "object",
+					properties: {
+						message: {
+							type: "string",
+							example: "Login successful",
+						},
+						token: {
+							type: "string",
+							description: "JWT token for authentication",
+							example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+						},
+						sessionId: {
+							type: "string",
+							description: "Session ID for the created session",
+							example: "507f1f77bcf86cd799439015",
+						},
+						expiresAt: {
+							type: "string",
+							format: "date-time",
+							description: "When the session expires",
+						},
+						user: {
+							$ref: "#/components/schemas/User",
 						},
 					},
 				},

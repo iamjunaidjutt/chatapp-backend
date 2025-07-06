@@ -5,7 +5,7 @@ import {
 	updateUserRole,
 	updateLastSeen,
 } from "../controllers/userRoom.controllers";
-import { requireAuth } from "../middlewares/auth.middlewares";
+import { verifyHybridJWT } from "../middlewares/hybrid-auth.middlewares";
 
 const router = express.Router();
 
@@ -48,7 +48,7 @@ const router = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/", requireAuth, getUserRooms);
+router.get("/", verifyHybridJWT, getUserRooms);
 
 /**
  * @swagger
@@ -112,7 +112,7 @@ router.get("/", requireAuth, getUserRooms);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.put("/:roomId/users/:userId/role", requireAuth, updateUserRole);
+router.put("/:roomId/users/:userId/role", verifyHybridJWT, updateUserRole);
 
 /**
  * @swagger
@@ -151,6 +151,6 @@ router.put("/:roomId/users/:userId/role", requireAuth, updateUserRole);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.put("/:roomId/last-seen", requireAuth, updateLastSeen);
+router.put("/:roomId/last-seen", verifyHybridJWT, updateLastSeen);
 
 export { router };

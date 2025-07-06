@@ -2,14 +2,14 @@ import express from "express";
 
 import {
 	register,
+	login,
 	getCurrentUser,
-	loginWithSession,
-	logoutWithSession,
 	logoutAllDevices,
 	getActiveSessions,
 	getSessionStats,
 	cleanupExpiredSessions,
 } from "../controllers/auth.controllers";
+import { verifyHybridJWT } from "../middlewares/hybrid-auth.middlewares";
 
 const router = express.Router();
 
@@ -129,7 +129,7 @@ router.post("/register", register);
  *   post:
  *     summary: Login user
  *     tags: [Auth]
- *     description: Authenticate user with email and password, creates a session
+ *     description: Authenticate user with email and password, creates JWT token and MongoDB session
  *     requestBody:
  *       required: true
  *       content:
@@ -151,31 +151,11 @@ router.post("/register", register);
  *                 example: "securePassword123"
  *     responses:
  *       200:
- *         description: Login successful
+ *         description: Login successful - Returns JWT token and session information
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Login successful"
- *                 user:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                       example: "6865252b6728b7af025ea7b5"
- *                     username:
- *                       type: string
- *                       example: "john_doe"
- *                     email:
- *                       type: string
- *                       example: "john@example.com"
- *                     avatarUrl:
- *                       type: string
- *                       nullable: true
- *                       example: "https://example.com/avatar.jpg"
+ *               $ref: '#/components/schemas/AuthResponse'
  *       400:
  *         description: Bad request - missing email or password
  *         content:
@@ -199,7 +179,7 @@ router.post("/register", register);
  *       500:
  *         description: Internal server error
  */
-router.post("/login", loginWithSession);
+router.post("/login", login);
 
 /**
  * @swagger
@@ -209,7 +189,7 @@ router.post("/login", loginWithSession);
  *     tags: [Auth]
  *     description: Destroys the current user session and clears session cookie
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     responses:
  *       200:
  *         description: Logout successful
@@ -231,8 +211,7 @@ router.post("/login", loginWithSession);
  *                 message:
  *                   type: string
  *                   example: "Could not log out"
- */
-router.post("/logout", logoutWithSession);
+ // Note: Logout functionality is now handled by the session controller
 
 /**
  * @swagger
@@ -242,7 +221,7 @@ router.post("/logout", logoutWithSession);
  *     tags: [Auth]
  *     description: Destroys all active sessions for the current user across all devices
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     responses:
  *       200:
  *         description: Successfully logged out from all devices
@@ -270,7 +249,7 @@ router.post("/logout", logoutWithSession);
  *       500:
  *         description: Internal server error
  */
-router.post("/logout-all", logoutAllDevices);
+router.post("/logout-all", verifyHybridJWT, logoutAllDevices);
 
 /**
  * @swagger
@@ -280,7 +259,7 @@ router.post("/logout-all", logoutAllDevices);
  *     tags: [Auth]
  *     description: Returns a list of all active sessions for the authenticated user
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     responses:
  *       200:
  *         description: List of active sessions
@@ -321,7 +300,7 @@ router.post("/logout-all", logoutAllDevices);
  *       500:
  *         description: Internal server error
  */
-router.get("/sessions", getActiveSessions);
+router.get("/sessions", verifyHybridJWT, getActiveSessions);
 
 /**
  * @swagger
@@ -331,7 +310,7 @@ router.get("/sessions", getActiveSessions);
  *     tags: [Auth]
  *     description: Returns overall session statistics for administrative purposes. Requires admin role.
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     responses:
  *       200:
  *         description: Session statistics
@@ -375,7 +354,7 @@ router.get("/sessions", getActiveSessions);
  *       500:
  *         description: Internal server error
  */
-router.get("/admin/session-stats", getSessionStats);
+router.get("/admin/session-stats", verifyHybridJWT, getSessionStats);
 
 /**
  * @swagger
@@ -385,7 +364,7 @@ router.get("/admin/session-stats", getSessionStats);
  *     tags: [Auth]
  *     description: Manually trigger cleanup of expired sessions from the database. Requires admin role.
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     responses:
  *       200:
  *         description: Expired sessions cleaned up successfully
@@ -424,7 +403,7 @@ router.get("/admin/session-stats", getSessionStats);
  *       500:
  *         description: Internal server error
  */
-router.post("/admin/cleanup-sessions", cleanupExpiredSessions);
+router.post("/admin/cleanup-sessions", verifyHybridJWT, cleanupExpiredSessions);
 
 /**
  * @swagger
@@ -434,7 +413,7 @@ router.post("/admin/cleanup-sessions", cleanupExpiredSessions);
  *     tags: [Auth]
  *     description: Returns information about the currently authenticated user
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     responses:
  *       200:
  *         description: Current user info
@@ -487,6 +466,6 @@ router.post("/admin/cleanup-sessions", cleanupExpiredSessions);
  *       500:
  *         description: Internal server error
  */
-router.get("/me", getCurrentUser);
+router.get("/me", verifyHybridJWT, getCurrentUser);
 
 export { router as authRouter };

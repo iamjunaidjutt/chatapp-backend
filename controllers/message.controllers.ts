@@ -1,18 +1,19 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
 import { Message, Room, UserRoom, IMessage } from "../models";
+import { HybridAuthRequest } from "../middlewares/hybrid-auth.middlewares";
 
 /**
  * Get messages in a room
  */
 export const getRoomMessages = async (
-	req: Request,
+	req: HybridAuthRequest,
 	res: Response
 ): Promise<void> => {
 	try {
 		const { id } = req.params;
 		const { limit = 50, offset = 0, before, after } = req.query;
-		const currentUserId = (req.session as any).userId;
+		const currentUserId = req.user?.id;
 
 		// Validate that ID exists and is a valid ObjectId
 		if (!id || !mongoose.Types.ObjectId.isValid(id)) {
@@ -87,13 +88,13 @@ export const getRoomMessages = async (
  * Send a message to a room
  */
 export const sendMessage = async (
-	req: Request,
+	req: HybridAuthRequest,
 	res: Response
 ): Promise<void> => {
 	try {
 		const { id } = req.params;
 		const { content, messageType = "text" } = req.body;
-		const currentUserId = (req.session as any).userId;
+		const currentUserId = req.user?.id;
 
 		// Validate that ID exists and is a valid ObjectId
 		if (!id || !mongoose.Types.ObjectId.isValid(id)) {
@@ -171,12 +172,12 @@ export const sendMessage = async (
  * Get a specific message by ID
  */
 export const getMessageById = async (
-	req: Request,
+	req: HybridAuthRequest,
 	res: Response
 ): Promise<void> => {
 	try {
 		const { id } = req.params;
-		const currentUserId = (req.session as any).userId;
+		const currentUserId = req.user?.id;
 
 		// Validate that ID exists and is a valid ObjectId
 		if (!id || !mongoose.Types.ObjectId.isValid(id)) {
@@ -224,13 +225,13 @@ export const getMessageById = async (
  * Update a message
  */
 export const updateMessage = async (
-	req: Request,
+	req: HybridAuthRequest,
 	res: Response
 ): Promise<void> => {
 	try {
 		const { id } = req.params;
 		const { content } = req.body;
-		const currentUserId = (req.session as any).userId;
+		const currentUserId = req.user?.id;
 
 		// Validate that ID exists and is a valid ObjectId
 		if (!id || !mongoose.Types.ObjectId.isValid(id)) {
@@ -318,12 +319,12 @@ export const updateMessage = async (
  * Delete a message
  */
 export const deleteMessage = async (
-	req: Request,
+	req: HybridAuthRequest,
 	res: Response
 ): Promise<void> => {
 	try {
 		const { id } = req.params;
-		const currentUserId = (req.session as any).userId;
+		const currentUserId = req.user?.id;
 
 		// Validate that ID exists and is a valid ObjectId
 		if (!id || !mongoose.Types.ObjectId.isValid(id)) {
@@ -384,13 +385,13 @@ export const deleteMessage = async (
  * Search messages in a room
  */
 export const searchMessages = async (
-	req: Request,
+	req: HybridAuthRequest,
 	res: Response
 ): Promise<void> => {
 	try {
 		const { id } = req.params;
 		const { q, limit = 20 } = req.query;
-		const currentUserId = (req.session as any).userId;
+		const currentUserId = req.user?.id;
 
 		// Validate that ID exists and is a valid ObjectId
 		if (!id || !mongoose.Types.ObjectId.isValid(id)) {
