@@ -16,7 +16,7 @@ import {
 	getRoomParticipants,
 	updateUserRole,
 	updateLastSeen,
-} from "../controllers/userRoom.controllers";
+} from "../controllers/user-room.controllers";
 import {
 	verifyHybridJWT,
 	optionalHybridJWT,

@@ -4,7 +4,7 @@ import {
 	getUserRooms,
 	updateUserRole,
 	updateLastSeen,
-} from "../controllers/userRoom.controllers";
+} from "../controllers/user-room.controllers";
 import { verifyHybridJWT } from "../middlewares/hybrid-auth.middlewares";
 
 const router = express.Router();
