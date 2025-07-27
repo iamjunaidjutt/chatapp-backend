@@ -23,19 +23,12 @@ const options = {
 		],
 		components: {
 			securitySchemes: {
-				bearerAuth: {
-					type: "http",
-					scheme: "bearer",
-					bearerFormat: "JWT",
-					description:
-						"JWT token authentication. Use the token received from login endpoint.",
-				},
 				hybridAuth: {
 					type: "http",
 					scheme: "bearer",
 					bearerFormat: "JWT",
 					description:
-						"Hybrid JWT + Session authentication. The JWT token is validated and session is maintained in MongoDB.",
+						"Hybrid JWT + Session authentication. IMPORTANT: Use the exact 'token' value from the login response. The token is validated against both JWT and an active session in MongoDB. If requests fail with 'Session expired or invalid', you need to login again to get a fresh token and session.",
 				},
 			},
 			schemas: {

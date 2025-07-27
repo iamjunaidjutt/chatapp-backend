@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
 import moment from "moment";
 
 import { JWTSession } from "../models/session.models";
@@ -16,19 +17,12 @@ export interface HybridAuthRequest extends Request {
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-development-only";
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1d";
 
 if (!process.env.JWT_SECRET) {
 	console.warn(
 		"⚠️  JWT_SECRET not set in environment variables, using default (insecure for production)"
 	);
 }
-
-// Helper function to create token hash for database storage
-const createTokenHash = (token: string): string => {
-	const crypto = require("crypto");
-	return crypto.createHash("sha256").update(token).digest("hex");
-};
 
 /**
  * Generate JWT token and create session in database
@@ -47,18 +41,20 @@ export const generateHybridJWT = async (
 		email: user.email,
 		username: user.username,
 	};
-	const token = jwt.sign(payload, JWT_SECRET as string, {
+	const token = jwt.sign(payload, JWT_SECRET, {
 		expiresIn: "1d",
 	});
 
-	// Calculate expiration date using moment
-	const expiresAt = moment().add(moment.duration(JWT_EXPIRES_IN)).toDate();
+	// Calculate expiration date - ensure it matches JWT expiration
+	// For "1d" format, add 1 day to current time
+	const expiresAt = moment().add(1, "day").toDate();
+
+	const tokenHash = await bcrypt.hash(token, 10); // Hash the token for storage
 
 	// Create session record in database
 	const session = new JWTSession({
 		userId: user.id,
-		jwtToken: token,
-		tokenHash: createTokenHash(token),
+		tokenHash,
 		userAgent: req?.headers["user-agent"],
 		ipAddress: req?.ip || req?.connection?.remoteAddress,
 		expiresAt,
@@ -147,16 +143,51 @@ export const verifyHybridJWT = (
 			// Verify JWT token
 			const decoded = jwt.verify(token, JWT_SECRET) as any;
 
-			// Check if session exists and is active in database
 			const session = await JWTSession.findOne({
-				tokenHash: createTokenHash(token),
+				userId: decoded.id,
 				isActive: true,
 				expiresAt: { $gt: new Date() },
 			});
 
 			if (!session) {
+				// Debug logging for development
+				if (process.env.NODE_ENV === "development") {
+					console.log("🔍 Token validation failed:");
+					console.log("- Looking for active session with this hash");
+
+					// Check if session exists but is inactive or expired
+					const inactiveSession = await JWTSession.findOne({
+						userId: decoded.id,
+					});
+					if (inactiveSession) {
+						console.log("- Found session but it is:", {
+							isActive: inactiveSession.isActive,
+							expiresAt: inactiveSession.expiresAt,
+							now: new Date(),
+							expired: inactiveSession.expiresAt < new Date(),
+						});
+					} else {
+						console.log("- No session found with this user ID");
+						console.log(
+							"- Total active sessions:",
+							await JWTSession.countDocuments({ isActive: true })
+						);
+					}
+				}
+
 				res.status(401).json({
-					message: "Session expired or invalid.",
+					message:
+						"Session expired or invalid. Please login again to get a fresh token.",
+				});
+				return;
+			}
+
+			//compare token hash
+			const match = await bcrypt.compare(token, session?.tokenHash);
+			if (!match) {
+				res.status(401).json({
+					message:
+						"Session expired or invalid. Please login again to get a fresh token.",
 				});
 				return;
 			}
@@ -217,7 +248,7 @@ export const optionalHybridJWT = (
 
 				// Check if session exists and is active in database
 				const session = await JWTSession.findOne({
-					tokenHash: createTokenHash(token),
+					userId: decoded.id,
 					isActive: true,
 					expiresAt: { $gt: new Date() },
 				});
@@ -226,6 +257,19 @@ export const optionalHybridJWT = (
 					// Update last used timestamp
 					session.lastUsed = new Date();
 					await session.save();
+
+					// Compare token hash
+					const match = await bcrypt.compare(
+						token,
+						session.tokenHash
+					);
+					if (!match) {
+						res.status(401).json({
+							message:
+								"Session expired or invalid. Please login again to get a fresh token.",
+						});
+						return;
+					}
 
 					// Add user info to request
 					req.user = {
