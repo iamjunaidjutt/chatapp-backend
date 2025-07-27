@@ -231,8 +231,9 @@ export const leaveRoom = async (
 			if (otherParticipants.length > 0) {
 				// Transfer ownership to another admin or the first participant
 				const newOwner =
-					otherParticipants.find((p) => p.role === "admin") ||
-					otherParticipants[0];
+					otherParticipants.find(
+						(p) => p.role === UserRoomRole.ADMIN
+					) || otherParticipants[0];
 				if (newOwner) {
 					room.createdBy = newOwner.userId;
 					newOwner.role = UserRoomRole.ADMIN;
@@ -244,6 +245,7 @@ export const leaveRoom = async (
 
 		// Mark as inactive instead of deleting (for audit purposes)
 		userRoom.isActive = false;
+		userRoom.notifications = false;
 		await userRoom.save();
 
 		res.json({

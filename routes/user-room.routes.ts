@@ -24,7 +24,7 @@ const router = express.Router();
  *     tags: [UserRooms]
  *     description: Get all rooms that the authenticated user is a participant in
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     responses:
  *       200:
  *         description: User rooms retrieved successfully
@@ -58,7 +58,7 @@ router.get("/", verifyHybridJWT, getUserRooms);
  *     tags: [UserRooms]
  *     description: Update a user's role in a room (admin only)
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     parameters:
  *       - in: path
  *         name: roomId
@@ -122,7 +122,7 @@ router.put("/:roomId/users/:userId/role", verifyHybridJWT, updateUserRole);
  *     tags: [UserRooms]
  *     description: Update the last seen timestamp for the authenticated user in a room
  *     security:
- *       - sessionAuth: []
+ *       - hybridAuth: []
  *     parameters:
  *       - in: path
  *         name: roomId
