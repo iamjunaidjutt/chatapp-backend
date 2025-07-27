@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 // Session interface for TypeScript
-export interface IJWTSession {
+export interface ISession {
 	_id: string;
 	userId: mongoose.Types.ObjectId;
 	tokenHash: string;
@@ -14,7 +14,7 @@ export interface IJWTSession {
 }
 
 // Session schema for tracking JWT sessions
-const sessionSchema = new mongoose.Schema<IJWTSession>({
+const sessionSchema = new mongoose.Schema<ISession>({
 	userId: {
 		type: mongoose.Schema.Types.ObjectId,
 		ref: "User",
@@ -48,4 +48,4 @@ const sessionSchema = new mongoose.Schema<IJWTSession>({
 // TTL index to automatically delete expired sessions
 sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-export const JWTSession = mongoose.model("JWTSession", sessionSchema);
+export const Session = mongoose.model("Session", sessionSchema);

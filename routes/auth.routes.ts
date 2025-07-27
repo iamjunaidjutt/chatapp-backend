@@ -211,7 +211,8 @@ router.post("/login", login);
  *                 message:
  *                   type: string
  *                   example: "Could not log out"
- // Note: Logout functionality is now handled by the session controller
+ */
+// Note: Logout functionality is now handled by the session controller
 
 /**
  * @swagger

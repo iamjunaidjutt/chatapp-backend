@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import moment from "moment";
 
-import { JWTSession } from "../models/session.models";
+import { Session } from "../models/session.models";
 
 // Extend Request interface to include user info
 export interface HybridAuthRequest extends Request {
@@ -52,7 +52,7 @@ export const generateHybridJWT = async (
 	const tokenHash = await bcrypt.hash(token, 10); // Hash the token for storage
 
 	// Create session record in database
-	const session = new JWTSession({
+	const session = new Session({
 		userId: user.id,
 		tokenHash,
 		userAgent: req?.headers["user-agent"],
@@ -72,9 +72,9 @@ export const generateHybridJWT = async (
 /**
  * Revoke a specific JWT session
  */
-export const revokeJWTSession = async (sessionId: string): Promise<boolean> => {
+export const revokeSession = async (sessionId: string): Promise<boolean> => {
 	try {
-		const result = await JWTSession.findByIdAndUpdate(
+		const result = await Session.findByIdAndUpdate(
 			sessionId,
 			{ isActive: false },
 			{ new: true }
@@ -93,7 +93,7 @@ export const revokeAllUserSessions = async (
 	userId: string
 ): Promise<number> => {
 	try {
-		const result = await JWTSession.updateMany(
+		const result = await Session.updateMany(
 			{ userId, isActive: true },
 			{ isActive: false }
 		);
@@ -109,7 +109,7 @@ export const revokeAllUserSessions = async (
  */
 export const cleanupExpiredSessions = async (): Promise<number> => {
 	try {
-		const result = await JWTSession.deleteMany({
+		const result = await Session.deleteMany({
 			$or: [{ expiresAt: { $lt: new Date() } }, { isActive: false }],
 		});
 		return result.deletedCount ?? 0;
@@ -143,7 +143,7 @@ export const verifyHybridJWT = (
 			// Verify JWT token
 			const decoded = jwt.verify(token, JWT_SECRET) as any;
 
-			const session = await JWTSession.findOne({
+			const session = await Session.findOne({
 				userId: decoded.id,
 				isActive: true,
 				expiresAt: { $gt: new Date() },
@@ -156,7 +156,7 @@ export const verifyHybridJWT = (
 					console.log("- Looking for active session with this hash");
 
 					// Check if session exists but is inactive or expired
-					const inactiveSession = await JWTSession.findOne({
+					const inactiveSession = await Session.findOne({
 						userId: decoded.id,
 					});
 					if (inactiveSession) {
@@ -170,7 +170,7 @@ export const verifyHybridJWT = (
 						console.log("- No session found with this user ID");
 						console.log(
 							"- Total active sessions:",
-							await JWTSession.countDocuments({ isActive: true })
+							await Session.countDocuments({ isActive: true })
 						);
 					}
 				}
@@ -247,7 +247,7 @@ export const optionalHybridJWT = (
 				const decoded = jwt.verify(token, JWT_SECRET) as any;
 
 				// Check if session exists and is active in database
-				const session = await JWTSession.findOne({
+				const session = await Session.findOne({
 					userId: decoded.id,
 					isActive: true,
 					expiresAt: { $gt: new Date() },
@@ -330,7 +330,7 @@ export const requireHybridOwnership = (userIdField: string = "userId") => {
  */
 export const getUserSessions = async (userId: string) => {
 	try {
-		const sessions = await JWTSession.find({
+		const sessions = await Session.find({
 			userId,
 			isActive: true,
 			expiresAt: { $gt: new Date() },

@@ -1,8 +1,7 @@
 import { Response } from "express";
-import { JWTSession } from "../models/session.models";
+import { Session } from "../models/session.models";
 import { User } from "../models";
 import { HybridAuthRequest } from "../middlewares/hybrid-auth.middlewares";
-import crypto from "crypto";
 
 // Get all active sessions for a user
 export const getUserSessions = async (
@@ -20,7 +19,7 @@ export const getUserSessions = async (
 			return;
 		}
 
-		const sessions = await JWTSession.find({
+		const sessions = await Session.find({
 			userId,
 			isActive: true,
 			expiresAt: { $gt: new Date() },
@@ -58,7 +57,7 @@ export const revokeSession = async (req: HybridAuthRequest, res: Response) => {
 			return;
 		}
 
-		const session = await JWTSession.findOneAndUpdate(
+		const session = await Session.findOneAndUpdate(
 			{
 				_id: sessionId,
 				userId,
@@ -109,7 +108,7 @@ export const revokeAllOtherSessions = async (
 			return;
 		}
 
-		const result = await JWTSession.updateMany(
+		const result = await Session.updateMany(
 			{
 				userId,
 				isActive: true,
@@ -148,7 +147,7 @@ export const logout = async (req: HybridAuthRequest, res: Response) => {
 			return;
 		}
 
-		await JWTSession.findOneAndUpdate(
+		await Session.findOneAndUpdate(
 			{ _id: sessionId, userId },
 			{
 				isActive: false,
@@ -195,7 +194,7 @@ export const getAllSessions = async (req: HybridAuthRequest, res: Response) => {
 		const limit = parseInt(req.query.limit as string) || 20;
 		const skip = (page - 1) * limit;
 
-		const sessions = await JWTSession.find({
+		const sessions = await Session.find({
 			isActive: true,
 			expiresAt: { $gt: new Date() },
 		})
@@ -205,7 +204,7 @@ export const getAllSessions = async (req: HybridAuthRequest, res: Response) => {
 			.skip(skip)
 			.limit(limit);
 
-		const totalSessions = await JWTSession.countDocuments({
+		const totalSessions = await Session.countDocuments({
 			isActive: true,
 			expiresAt: { $gt: new Date() },
 		});
@@ -237,7 +236,7 @@ export const cleanupExpiredSessions = async (
 	res: Response
 ) => {
 	try {
-		const result = await JWTSession.deleteMany({
+		const result = await Session.deleteMany({
 			$or: [{ expiresAt: { $lt: new Date() } }, { isActive: false }],
 		});
 

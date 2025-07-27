@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { User } from "../models";
 import {
 	generateHybridJWT,
-	revokeJWTSession,
+	revokeSession,
 	revokeAllUserSessions,
 	getUserSessions,
 	HybridAuthRequest,
@@ -275,7 +275,7 @@ const logout = async (req: HybridAuthRequest, res: Response): Promise<void> => {
 		}
 
 		// Revoke current session
-		await revokeJWTSession(req.sessionId);
+		await revokeSession(req.sessionId);
 
 		res.json({ message: "Logged out successfully" });
 	} catch (error) {
