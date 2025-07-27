@@ -18,9 +18,6 @@ const router = Router();
  *   description: JWT session management for hybrid authentication
  */
 
-// All session routes require authentication
-router.use(verifyHybridJWT);
-
 /**
  * @swagger
  * /sessions:
@@ -57,7 +54,7 @@ router.use(verifyHybridJWT);
  *         description: Internal server error
  */
 // Get current user's sessions
-router.get("/", getUserSessions);
+router.get("/", verifyHybridJWT, getUserSessions);
 
 /**
  * @swagger
@@ -86,9 +83,20 @@ router.get("/", getUserSessions);
  *         description: No active session found
  *       500:
  *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Internal server error"
  */
 // Logout from current session
-router.post("/logout", logout);
+router.post("/logout", verifyHybridJWT, logout);
 
 /**
  * @swagger
@@ -129,7 +137,7 @@ router.post("/logout", logout);
  *         description: Internal server error
  */
 // Revoke a specific session
-router.delete("/:sessionId", revokeSession);
+router.delete("/:sessionId", verifyHybridJWT, revokeSession);
 
 /**
  * @swagger
@@ -160,7 +168,7 @@ router.delete("/:sessionId", revokeSession);
  *         description: Internal server error
  */
 // Revoke all other sessions (keep current one)
-router.post("/revoke-all-others", revokeAllOtherSessions);
+router.post("/revoke-all-others", verifyHybridJWT, revokeAllOtherSessions);
 
 /**
  * @swagger
@@ -225,7 +233,7 @@ router.post("/revoke-all-others", revokeAllOtherSessions);
  *         description: Internal server error
  */
 // Admin routes
-router.get("/admin/all", getAllSessions);
+router.get("/admin/all", verifyHybridJWT, getAllSessions);
 
 /**
  * @swagger
@@ -256,6 +264,6 @@ router.get("/admin/all", getAllSessions);
  *         description: Internal server error
  */
 // Cleanup expired sessions (can be called by admin or cron job)
-router.post("/cleanup", cleanupExpiredSessions);
+router.post("/cleanup", verifyHybridJWT, cleanupExpiredSessions);
 
 export default router;

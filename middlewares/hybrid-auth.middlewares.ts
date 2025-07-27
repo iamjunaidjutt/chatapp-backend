@@ -13,10 +13,10 @@ export interface HybridAuthRequest extends Request {
 		username?: string;
 	};
 	sessionId?: string;
-	session?: any;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-development-only";
+const JWT_SECRET: string =
+	process.env.JWT_SECRET || "your-secret-key-development-only";
 
 if (!process.env.JWT_SECRET) {
 	console.warn(
@@ -138,10 +138,10 @@ export const verifyHybridJWT = (
 				return;
 			}
 
-			const token = authHeader.substring(7); // Remove "Bearer " prefix
+			const token = authHeader.split(" ")[1]; // Remove "Bearer " prefix
 
 			// Verify JWT token
-			const decoded = jwt.verify(token, JWT_SECRET) as any;
+			const decoded = token && (jwt.verify(token, JWT_SECRET) as any);
 
 			const session = await Session.findOne({
 				userId: decoded.id,
@@ -183,7 +183,8 @@ export const verifyHybridJWT = (
 			}
 
 			//compare token hash
-			const match = await bcrypt.compare(token, session?.tokenHash);
+			const match =
+				token && (await bcrypt.compare(token, session?.tokenHash));
 			if (!match) {
 				res.status(401).json({
 					message:

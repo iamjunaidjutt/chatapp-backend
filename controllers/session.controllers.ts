@@ -98,7 +98,7 @@ export const revokeAllOtherSessions = async (
 ) => {
 	try {
 		const userId = req.user?.id;
-		const currentSessionId = req.session?.id;
+		const currentSessionId = req?.sessionId;
 
 		if (!userId) {
 			res.status(401).json({
@@ -136,7 +136,7 @@ export const revokeAllOtherSessions = async (
 // Logout from current session
 export const logout = async (req: HybridAuthRequest, res: Response) => {
 	try {
-		const sessionId = req.session?.id;
+		const sessionId = req?.sessionId;
 		const userId = req.user?.id;
 
 		if (!sessionId || !userId) {
