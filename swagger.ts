@@ -271,11 +271,6 @@ const options = {
 								"The id of the user who owns this session",
 							example: "507f1f77bcf86cd799439011",
 						},
-						jwtToken: {
-							type: "string",
-							description:
-								"The JWT token (not returned in API responses)",
-						},
 						tokenHash: {
 							type: "string",
 							description: "Hash of the JWT token for validation",
