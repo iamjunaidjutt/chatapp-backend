@@ -1,6 +1,6 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import mongoose from "mongoose";
-import { UserRoom, Room, User, IUserRoom } from "../models";
+import { UserRoom, Room, UserRoomRole } from "../models";
 import { HybridAuthRequest } from "../middlewares/hybrid-auth.middlewares";
 
 /**
@@ -235,7 +235,7 @@ export const leaveRoom = async (
 					otherParticipants[0];
 				if (newOwner) {
 					room.createdBy = newOwner.userId;
-					newOwner.role = "admin";
+					newOwner.role = UserRoomRole.ADMIN;
 					await room.save();
 					await newOwner.save();
 				}
@@ -317,7 +317,7 @@ export const updateUserRole = async (
 		}
 
 		// Update role
-		targetUserRoom.role = role as "member" | "admin" | "moderator";
+		targetUserRoom.role = role as UserRoomRole;
 		await targetUserRoom.save();
 
 		const updatedUserRoom = await UserRoom.findById(targetUserRoom._id)

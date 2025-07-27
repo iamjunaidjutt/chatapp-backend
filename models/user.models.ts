@@ -7,6 +7,7 @@ export interface IUser extends Document {
 	password: string;
 	role?: UserRole; // Optional role, defaults to 'user'
 	avatarUrl?: string;
+	isOnline: boolean;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -44,6 +45,10 @@ const UserSchema = new Schema<IUser>(
 		avatarUrl: {
 			type: String,
 			default: null,
+		},
+		isOnline: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	{

@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import moment from "moment";
+
 import { JWTSession } from "../models/session.models";
 
 // Extend Request interface to include user info
@@ -14,7 +16,7 @@ export interface HybridAuthRequest extends Request {
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-development-only";
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1d";
 
 if (!process.env.JWT_SECRET) {
 	console.warn(
@@ -46,15 +48,11 @@ export const generateHybridJWT = async (
 		username: user.username,
 	};
 	const token = jwt.sign(payload, JWT_SECRET as string, {
-		expiresIn: "7d",
+		expiresIn: "1d",
 	});
 
-	// Calculate expiration date
-	const expiresAt = new Date();
-	const expiresInMs = JWT_EXPIRES_IN.includes("d")
-		? parseInt(JWT_EXPIRES_IN) * 24 * 60 * 60 * 1000
-		: parseInt(JWT_EXPIRES_IN) * 1000;
-	expiresAt.setTime(expiresAt.getTime() + expiresInMs);
+	// Calculate expiration date using moment
+	const expiresAt = moment().add(moment.duration(JWT_EXPIRES_IN)).toDate();
 
 	// Create session record in database
 	const session = new JWTSession({
@@ -118,7 +116,7 @@ export const cleanupExpiredSessions = async (): Promise<number> => {
 		const result = await JWTSession.deleteMany({
 			$or: [{ expiresAt: { $lt: new Date() } }, { isActive: false }],
 		});
-		return result.deletedCount;
+		return result.deletedCount ?? 0;
 	} catch (error) {
 		console.error("Error cleaning up expired sessions:", error);
 		return 0;

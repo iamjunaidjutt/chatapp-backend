@@ -3,13 +3,19 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface IUserRoom extends Document {
 	userId: mongoose.Types.ObjectId;
 	roomId: mongoose.Types.ObjectId;
-	role: "member" | "admin" | "moderator";
+	role: UserRoomRole;
 	joinedAt: Date;
 	lastSeenAt?: Date;
 	isActive: boolean;
 	notifications: boolean;
 	createdAt: Date;
 	updatedAt: Date;
+}
+
+export enum UserRoomRole {
+	MEMBER = "member",
+	ADMIN = "admin",
+	MODERATOR = "moderator",
 }
 
 const UserRoomSchema = new Schema<IUserRoom>(
@@ -26,8 +32,8 @@ const UserRoomSchema = new Schema<IUserRoom>(
 		},
 		role: {
 			type: String,
-			enum: ["member", "admin", "moderator"],
-			default: "member",
+			enum: Object.values(UserRoomRole),
+			default: UserRoomRole.MEMBER,
 			required: true,
 		},
 		joinedAt: {

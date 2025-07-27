@@ -1,6 +1,6 @@
 import { Response } from "express";
 import mongoose from "mongoose";
-import { Room, UserRoom, IRoom } from "../models";
+import { Room, UserRoom, UserRoomRole } from "../models";
 import { HybridAuthRequest } from "../middlewares/hybrid-auth.middlewares";
 
 /**
@@ -172,7 +172,7 @@ export const createRoom = async (
 		const userRoom = new UserRoom({
 			userId: currentUserId,
 			roomId: room._id,
-			role: "admin",
+			role: UserRoomRole.ADMIN,
 		});
 
 		await userRoom.save();
@@ -234,7 +234,8 @@ export const updateRoom = async (
 		if (
 			!userRoom ||
 			(room.createdBy?.toString() !== currentUserId &&
-				userRoom.role !== "admin")
+				userRoom.role !== UserRoomRole.ADMIN &&
+				userRoom.role !== UserRoomRole.MODERATOR)
 		) {
 			res.status(403).json({
 				message: "You don't have permission to update this room",
