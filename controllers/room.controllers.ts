@@ -99,6 +99,46 @@ export const getRoomById = async (
 };
 
 /**
+ * Get all rooms with participants
+ */
+export const getAllRoomsWithParticipants = async (
+	req: HybridAuthRequest,
+	res: Response
+): Promise<void> => {
+	try {
+		const rooms = await Room.find({})
+			.populate("createdBy", "username email avatarUrl")
+			.sort({ createdAt: -1 });
+
+		// Get participants for each room
+		const roomsWithParticipants = await Promise.all(
+			rooms.map(async (room) => {
+				const participants = await UserRoom.find({
+					roomId: room._id,
+					isActive: true,
+				});
+				return {
+					...room.toObject(),
+					participants,
+				};
+			})
+		);
+
+		res.status(200).json({
+			message: "Rooms retrieved successfully",
+			rooms: roomsWithParticipants,
+			total: rooms.length,
+		});
+	} catch (error) {
+		console.error("Error getting rooms:", error);
+		res.status(500).json({
+			message: "Failed to retrieve rooms",
+			error: process.env.NODE_ENV === "development" ? error : undefined,
+		});
+	}
+};
+
+/**
  * Create a new room
  */
 export const createRoom = async (

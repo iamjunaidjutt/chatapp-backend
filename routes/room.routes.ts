@@ -5,6 +5,7 @@ import {
 	createRoom,
 	updateRoom,
 	deleteRoom,
+	getAllRoomsWithParticipants,
 } from "../controllers/room.controllers";
 import {
 	getRoomMessages,
@@ -14,13 +15,8 @@ import {
 	joinRoom,
 	leaveRoom,
 	getRoomParticipants,
-	updateUserRole,
-	updateLastSeen,
 } from "../controllers/user-room.controllers";
-import {
-	verifyHybridJWT,
-	optionalHybridJWT,
-} from "../middlewares/hybrid-auth.middlewares";
+import { verifyHybridJWT } from "../middlewares/hybrid-auth.middlewares";
 
 const router = express.Router();
 
@@ -64,6 +60,37 @@ const router = express.Router();
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/", verifyHybridJWT, getAllRooms);
+
+/**
+ * @swagger
+ * /rooms/participants:
+ *   get:
+ *     summary: Get all rooms with participants
+ *     tags: [Rooms]
+ *     description: Retrieve all chat rooms with participants (requires authentication)
+ *     security:
+ *       - hybridAuth: []
+ *     responses:
+ *       200:
+ *         description: Rooms with participants retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Rooms with participant counts retrieved successfully"
+ *                 rooms:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/RoomWithCount'
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get("/participants", verifyHybridJWT, getAllRoomsWithParticipants);
 
 /**
  * @swagger
