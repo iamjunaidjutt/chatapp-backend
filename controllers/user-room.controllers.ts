@@ -16,6 +16,7 @@ export const getUserRooms = async (
 		const userRooms = await UserRoom.find({
 			userId: currentUserId,
 			isActive: true,
+			isRequest: false, // Exclude pending requests
 		})
 			.populate({
 				path: "roomId",
@@ -81,6 +82,7 @@ export const getRoomParticipants = async (
 		const participants = await UserRoom.find({
 			roomId: roomId,
 			isActive: true,
+			isRequest: false, // Exclude pending requests
 		})
 			.populate("userId", "username email avatarUrl")
 			.sort({ role: 1, joinedAt: 1 });
@@ -135,15 +137,40 @@ export const joinRoom = async (
 					message: "You are already a participant in this room",
 				});
 				return;
+			} else if (
+				existingUserRoom.isRequest &&
+				!existingUserRoom.isActive
+			) {
+				res.status(409).json({
+					message: "Your join request is pending approval",
+				});
+				return;
 			} else {
 				// Reactivate if previously left
-				existingUserRoom.isActive = true;
-				existingUserRoom.joinedAt = new Date();
-				await existingUserRoom.save();
+				if (room.isPrivate) {
+					// For private rooms, create a new request
+					existingUserRoom.isRequest = true;
+					existingUserRoom.isActive = false;
+					existingUserRoom.joinedAt = new Date();
+					await existingUserRoom.save();
+
+					res.json({
+						message:
+							"Join request sent successfully. Waiting for admin approval.",
+						userRoom: existingUserRoom,
+					});
+					return;
+				} else {
+					// For public rooms, reactivate directly
+					existingUserRoom.isActive = true;
+					existingUserRoom.isRequest = false;
+					existingUserRoom.joinedAt = new Date();
+					await existingUserRoom.save();
+				}
 			}
 		} else {
-			// Check room capacity
-			if (room.maxParticipants) {
+			// Check room capacity (only for public rooms or if it's a private room being approved)
+			if (room.maxParticipants && !room.isPrivate) {
 				const currentParticipants = await UserRoom.countDocuments({
 					roomId: roomId,
 					isActive: true,
@@ -162,9 +189,20 @@ export const joinRoom = async (
 				userId: currentUserId,
 				roomId: roomId,
 				role: "member",
+				isRequest: room.isPrivate ? true : false,
+				isActive: room.isPrivate ? false : true,
 			});
 
 			await userRoom.save();
+
+			if (room.isPrivate) {
+				res.json({
+					message:
+						"Join request sent successfully. Waiting for admin approval.",
+					userRoom: userRoom,
+				});
+				return;
+			}
 		}
 
 		// Get updated room with participants
@@ -176,7 +214,9 @@ export const joinRoom = async (
 			.populate("userId", "username email avatarUrl");
 
 		res.json({
-			message: "Successfully joined the room",
+			message: room.isPrivate
+				? "Join request sent successfully. Waiting for admin approval."
+				: "Successfully joined the room",
 			userRoom: updatedUserRoom,
 		});
 	} catch (error) {
@@ -283,7 +323,14 @@ export const updateUserRole = async (
 			return;
 		}
 
-		if (!role || !["member", "admin", "moderator"].includes(role)) {
+		if (
+			!role ||
+			![
+				UserRoomRole.MEMBER,
+				UserRoomRole.ADMIN,
+				UserRoomRole.MODERATOR,
+			].includes(role)
+		) {
 			res.status(400).json({
 				message: "Invalid role. Must be member, admin, or moderator",
 			});
@@ -297,7 +344,7 @@ export const updateUserRole = async (
 			isActive: true,
 		});
 
-		if (!currentUserRoom || currentUserRoom.role !== "admin") {
+		if (!currentUserRoom || currentUserRoom.role !== UserRoomRole.ADMIN) {
 			res.status(403).json({
 				message: "Only room admins can update user roles",
 			});
@@ -379,6 +426,230 @@ export const updateLastSeen = async (
 		console.error("Error updating last seen:", error);
 		res.status(500).json({
 			message: "Failed to update last seen",
+			error: process.env.NODE_ENV === "development" ? error : undefined,
+		});
+	}
+};
+
+/**
+ * Approve join request (admin/moderator only)
+ */
+export const approveJoinRequest = async (
+	req: HybridAuthRequest,
+	res: Response
+): Promise<void> => {
+	try {
+		const { roomId, userId } = req.params;
+		const currentUserId = req.user?.id;
+
+		// Validate inputs
+		if (!roomId || !mongoose.Types.ObjectId.isValid(roomId)) {
+			res.status(400).json({ message: "Invalid room ID" });
+			return;
+		}
+
+		if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+			res.status(400).json({ message: "Invalid user ID" });
+			return;
+		}
+
+		// Check if current user has admin/moderator privileges
+		const currentUserRoom = await UserRoom.findOne({
+			userId: currentUserId,
+			roomId: roomId,
+			isActive: true,
+		});
+
+		if (
+			!currentUserRoom ||
+			![UserRoomRole.ADMIN, UserRoomRole.MODERATOR].includes(
+				currentUserRoom.role
+			)
+		) {
+			res.status(403).json({
+				message:
+					"Only room admins and moderators can approve join requests",
+			});
+			return;
+		}
+
+		// Find the join request
+		const joinRequest = await UserRoom.findOne({
+			userId: userId,
+			roomId: roomId,
+			isRequest: true,
+			isActive: false,
+		});
+
+		if (!joinRequest) {
+			res.status(404).json({
+				message: "Join request not found",
+			});
+			return;
+		}
+
+		// Check room capacity before approving
+		const room = await Room.findById(roomId);
+		if (room?.maxParticipants) {
+			const currentParticipants = await UserRoom.countDocuments({
+				roomId: roomId,
+				isActive: true,
+			});
+
+			if (currentParticipants >= room.maxParticipants) {
+				res.status(409).json({
+					message: "Room has reached maximum capacity",
+				});
+				return;
+			}
+		}
+
+		// Approve the request
+		joinRequest.isActive = true;
+		joinRequest.isRequest = false;
+		joinRequest.joinedAt = new Date();
+		await joinRequest.save();
+
+		const approvedUserRoom = await UserRoom.findById(joinRequest._id)
+			.populate("userId", "username email avatarUrl")
+			.populate("roomId", "name isPrivate");
+
+		res.json({
+			message: "Join request approved successfully",
+			userRoom: approvedUserRoom,
+		});
+	} catch (error) {
+		console.error("Error approving join request:", error);
+		res.status(500).json({
+			message: "Failed to approve join request",
+			error: process.env.NODE_ENV === "development" ? error : undefined,
+		});
+	}
+};
+
+/**
+ * Reject join request (admin/moderator only)
+ */
+export const rejectJoinRequest = async (
+	req: HybridAuthRequest,
+	res: Response
+): Promise<void> => {
+	try {
+		const { roomId, userId } = req.params;
+		const currentUserId = req.user?.id;
+
+		// Validate inputs
+		if (!roomId || !mongoose.Types.ObjectId.isValid(roomId)) {
+			res.status(400).json({ message: "Invalid room ID" });
+			return;
+		}
+
+		if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+			res.status(400).json({ message: "Invalid user ID" });
+			return;
+		}
+
+		// Check if current user has admin/moderator privileges
+		const currentUserRoom = await UserRoom.findOne({
+			userId: currentUserId,
+			roomId: roomId,
+			isActive: true,
+		});
+
+		if (
+			!currentUserRoom ||
+			![UserRoomRole.ADMIN, UserRoomRole.MODERATOR].includes(
+				currentUserRoom.role
+			)
+		) {
+			res.status(403).json({
+				message:
+					"Only room admins and moderators can reject join requests",
+			});
+			return;
+		}
+
+		// Find and delete the join request
+		const joinRequest = await UserRoom.findOneAndDelete({
+			userId: userId,
+			roomId: roomId,
+			isRequest: true,
+			isActive: false,
+		});
+
+		if (!joinRequest) {
+			res.status(404).json({
+				message: "Join request not found",
+			});
+			return;
+		}
+
+		res.json({
+			message: "Join request rejected successfully",
+		});
+	} catch (error) {
+		console.error("Error rejecting join request:", error);
+		res.status(500).json({
+			message: "Failed to reject join request",
+			error: process.env.NODE_ENV === "development" ? error : undefined,
+		});
+	}
+};
+
+/**
+ * Get pending join requests for a room (admin/moderator only)
+ */
+export const getPendingJoinRequests = async (
+	req: HybridAuthRequest,
+	res: Response
+): Promise<void> => {
+	try {
+		const { roomId } = req.params;
+		const currentUserId = req.user?.id;
+
+		// Validate that roomId exists and is a valid ObjectId
+		if (!roomId || !mongoose.Types.ObjectId.isValid(roomId)) {
+			res.status(400).json({ message: "Invalid room ID" });
+			return;
+		}
+
+		// Check if current user has admin/moderator privileges
+		const currentUserRoom = await UserRoom.findOne({
+			userId: currentUserId,
+			roomId: roomId,
+			isActive: true,
+		});
+
+		if (
+			!currentUserRoom ||
+			![UserRoomRole.ADMIN, UserRoomRole.MODERATOR].includes(
+				currentUserRoom.role
+			)
+		) {
+			res.status(403).json({
+				message:
+					"Only room admins and moderators can view join requests",
+			});
+			return;
+		}
+
+		const pendingRequests = await UserRoom.find({
+			roomId: roomId,
+			isRequest: true,
+			isActive: false,
+		})
+			.populate("userId", "username email avatarUrl")
+			.sort({ createdAt: -1 });
+
+		res.json({
+			message: "Pending join requests retrieved successfully",
+			requests: pendingRequests,
+			total: pendingRequests.length,
+		});
+	} catch (error) {
+		console.error("Error getting pending join requests:", error);
+		res.status(500).json({
+			message: "Failed to retrieve pending join requests",
 			error: process.env.NODE_ENV === "development" ? error : undefined,
 		});
 	}

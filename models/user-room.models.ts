@@ -6,6 +6,7 @@ export interface IUserRoom extends Document {
 	role: UserRoomRole;
 	joinedAt: Date;
 	lastSeenAt?: Date;
+	isRequest?: boolean;
 	isActive: boolean;
 	notifications: boolean;
 	createdAt: Date;
@@ -42,6 +43,10 @@ const UserRoomSchema = new Schema<IUserRoom>(
 		},
 		lastSeenAt: {
 			type: Date,
+		},
+		isRequest: {
+			type: Boolean,
+			default: false,
 		},
 		isActive: {
 			type: Boolean,

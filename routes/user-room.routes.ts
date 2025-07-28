@@ -4,6 +4,9 @@ import {
 	getUserRooms,
 	updateUserRole,
 	updateLastSeen,
+	approveJoinRequest,
+	rejectJoinRequest,
+	getPendingJoinRequests,
 } from "../controllers/user-room.controllers";
 import { verifyHybridJWT } from "../middlewares/hybrid-auth.middlewares";
 
@@ -152,5 +155,167 @@ router.put("/:roomId/users/:userId/role", verifyHybridJWT, updateUserRole);
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.put("/:roomId/last-seen", verifyHybridJWT, updateLastSeen);
+
+/**
+ * @swagger
+ * /user-rooms/{roomId}/requests:
+ *   get:
+ *     summary: Get pending join requests for a room
+ *     tags: [UserRooms]
+ *     description: Get all pending join requests for a room (admin/moderator only)
+ *     security:
+ *       - hybridAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         description: Room ID
+ *         schema:
+ *           type: string
+ *           example: "507f1f77bcf86cd799439012"
+ *     responses:
+ *       200:
+ *         description: Pending requests retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Pending join requests retrieved successfully"
+ *                 requests:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                       userId:
+ *                         type: object
+ *                         properties:
+ *                           username:
+ *                             type: string
+ *                           email:
+ *                             type: string
+ *                           avatarUrl:
+ *                             type: string
+ *                       roomId:
+ *                         type: string
+ *                       isRequest:
+ *                         type: boolean
+ *                         example: true
+ *                       isActive:
+ *                         type: boolean
+ *                         example: false
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                 total:
+ *                   type: number
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Only room admins and moderators can view join requests
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get("/:roomId/requests", verifyHybridJWT, getPendingJoinRequests);
+
+/**
+ * @swagger
+ * /user-rooms/{roomId}/approve/{userId}:
+ *   post:
+ *     summary: Approve a join request
+ *     tags: [UserRooms]
+ *     description: Approve a pending join request for a private room (admin/moderator only)
+ *     security:
+ *       - hybridAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         description: Room ID
+ *         schema:
+ *           type: string
+ *           example: "507f1f77bcf86cd799439012"
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: User ID whose request to approve
+ *         schema:
+ *           type: string
+ *           example: "507f1f77bcf86cd799439011"
+ *     responses:
+ *       200:
+ *         description: Join request approved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Join request approved successfully"
+ *                 userRoom:
+ *                   type: object
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Only room admins and moderators can approve join requests
+ *       404:
+ *         description: Join request not found
+ *       409:
+ *         description: Room has reached maximum capacity
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.post("/:roomId/approve/:userId", verifyHybridJWT, approveJoinRequest);
+
+/**
+ * @swagger
+ * /user-rooms/{roomId}/reject/{userId}:
+ *   post:
+ *     summary: Reject a join request
+ *     tags: [UserRooms]
+ *     description: Reject a pending join request for a private room (admin/moderator only)
+ *     security:
+ *       - hybridAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         description: Room ID
+ *         schema:
+ *           type: string
+ *           example: "507f1f77bcf86cd799439012"
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: User ID whose request to reject
+ *         schema:
+ *           type: string
+ *           example: "507f1f77bcf86cd799439011"
+ *     responses:
+ *       200:
+ *         description: Join request rejected successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Join request rejected successfully"
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Only room admins and moderators can reject join requests
+ *       404:
+ *         description: Join request not found
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.post("/:roomId/reject/:userId", verifyHybridJWT, rejectJoinRequest);
 
 export { router };
