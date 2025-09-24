@@ -6,6 +6,7 @@ import { router as messageRouter } from "./message.routes";
 import { router as userRoomRouter } from "./user-room.routes";
 import { authRouter } from "./auth.routes";
 import sessionRouter from "./session.routes";
+import { socketRoutes } from "./socket.routes";
 
 const router = Router();
 
@@ -16,6 +17,7 @@ router.use("/rooms", roomRouter);
 router.use("/messages", messageRouter);
 router.use("/user-rooms", userRoomRouter);
 router.use("/sessions", sessionRouter);
+router.use("/socket", socketRoutes);
 
 /**
  * @swagger

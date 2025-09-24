@@ -10,6 +10,13 @@ import { logger } from "./middlewares/logger.middlewares";
 import { errorHandler } from "./middlewares/error-handler.middlewares";
 import { config } from "./config";
 import { setupSwagger } from "./swagger";
+import { initializeSocketService } from "./utils/socket.instance";
+import {
+	ServerToClientEvents,
+	ClientToServerEvents,
+	InterServerEvents,
+	SocketData,
+} from "./types/socket.types";
 
 async function startServer() {
 	try {
@@ -33,28 +40,29 @@ async function startServer() {
 
 		// 3) Create HTTP + Socket.IO server
 		const server = createServer(app);
-		const io = new Server(server, {
+		const io = new Server<
+			ClientToServerEvents,
+			ServerToClientEvents,
+			InterServerEvents,
+			SocketData
+		>(server, {
 			cors: {
 				origin: config.clientUrl,
 				methods: ["GET", "POST"],
 			},
 		});
 
-		io.on("connection", (socket) => {
-			console.log("A user connected:", socket.id);
+		// 4) Initialize Socket Service
+		const socketService = initializeSocketService(io);
+		console.log("✅ Socket service initialized");
 
-			socket.on("disconnect", () =>
-				console.log("User disconnected:", socket.id)
-			);
-			// …more events…
-		});
-
-		// 4) Start listening
+		// 5) Start listening
 		server.listen(config.port, () => {
 			console.log(`🚀 Server is running on port ${config.port}`);
+			console.log(`📡 Socket.IO server is ready for connections`);
 		});
 
-		// 5) Setup periodic session cleanup (every 24 hours)
+		// 6) Setup periodic session cleanup (every 24 hours)
 		setInterval(async () => {
 			try {
 				const { cleanupExpiredSessions } = await import(
@@ -82,7 +90,7 @@ async function startServer() {
 			}
 		}, 5000); // Wait 5 seconds after server start
 
-		// 5) (Optional) Log future disconnects/errors
+		// 7) (Optional) Log future disconnects/errors
 		mongoose.connection.on("error", (err) =>
 			console.error("Mongoose connection error:", err)
 		);

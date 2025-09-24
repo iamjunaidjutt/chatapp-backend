@@ -2,6 +2,12 @@ import { Request, Response } from "express";
 import mongoose from "mongoose";
 import { Message, Room, UserRoom, IMessage } from "../models";
 import { HybridAuthRequest } from "../middlewares/hybrid-auth.middlewares";
+import {
+	safeEmitNewMessage,
+	safeEmitMessageUpdated,
+	safeEmitMessageDeleted,
+} from "../utils/socket.utils";
+import { MessageSocketData } from "../types/socket.types";
 
 /**
  * Get messages in a room
@@ -157,8 +163,25 @@ export const sendMessage = async (
 			data: populatedMessage,
 		});
 
-		// TODO: Emit socket event for real-time updates
-		// io.to(id).emit("newMessage", populatedMessage);
+		// Emit socket event for real-time updates
+		if (populatedMessage) {
+			const messageSocketData: MessageSocketData = {
+				_id: (populatedMessage._id as any).toString(),
+				content: populatedMessage.content,
+				sentAt: populatedMessage.sentAt,
+				userId: {
+					_id: (populatedMessage.userId as any)._id.toString(),
+					username: (populatedMessage.userId as any).username,
+					email: (populatedMessage.userId as any).email,
+					avatarUrl: (populatedMessage.userId as any).avatarUrl,
+				},
+				roomId: id,
+				messageType: populatedMessage.messageType,
+				isEdited: populatedMessage.isEdited,
+				editedAt: populatedMessage.editedAt,
+			};
+			safeEmitNewMessage(messageSocketData);
+		}
 	} catch (error) {
 		console.error("Error sending message:", error);
 		res.status(500).json({
@@ -304,8 +327,25 @@ export const updateMessage = async (
 			data: updatedMessage,
 		});
 
-		// TODO: Emit socket event for real-time updates
-		// io.to(message.roomId.toString()).emit("messageUpdated", updatedMessage);
+		// Emit socket event for real-time updates
+		if (updatedMessage) {
+			const messageSocketData: MessageSocketData = {
+				_id: (updatedMessage._id as any).toString(),
+				content: updatedMessage.content,
+				sentAt: updatedMessage.sentAt,
+				userId: {
+					_id: (updatedMessage.userId as any)._id.toString(),
+					username: (updatedMessage.userId as any).username,
+					email: (updatedMessage.userId as any).email,
+					avatarUrl: (updatedMessage.userId as any).avatarUrl,
+				},
+				roomId: message.roomId.toString(),
+				messageType: updatedMessage.messageType,
+				isEdited: updatedMessage.isEdited,
+				editedAt: updatedMessage.editedAt,
+			};
+			safeEmitMessageUpdated(messageSocketData);
+		}
 	} catch (error) {
 		console.error("Error updating message:", error);
 		res.status(500).json({
@@ -370,8 +410,8 @@ export const deleteMessage = async (
 			message: "Message deleted successfully",
 		});
 
-		// TODO: Emit socket event for real-time updates
-		// io.to(message.roomId.toString()).emit("messageDeleted", { messageId: id });
+		// Emit socket event for real-time updates
+		safeEmitMessageDeleted(id, message.roomId.toString());
 	} catch (error) {
 		console.error("Error deleting message:", error);
 		res.status(500).json({

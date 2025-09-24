@@ -2,6 +2,8 @@ import { Response } from "express";
 import mongoose from "mongoose";
 import { Room, UserRoom, UserRoomRole } from "../models";
 import { HybridAuthRequest } from "../middlewares/hybrid-auth.middlewares";
+import { getSocketService } from "../utils/socket.instance";
+import { RoomSocketData } from "../types/socket.types";
 
 /**
  * Get all rooms
