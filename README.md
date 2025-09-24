@@ -408,7 +408,6 @@ This project is licensed under the ISC License. See the LICENSE file for details
 For support or questions:
 - Create an issue in the GitHub repository
 - Check the API documentation at `/api-docs`
-- Review the socket implementation guide in `SOCKET_IMPLEMENTATION.md`
 
 ---
 
